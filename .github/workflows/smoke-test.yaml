@@ -33,6 +33,15 @@ jobs:
       - name: Coverage summary
         run: deno coverage coverage/
 
+      - name: Check coverage threshold (95%)
+        run: |
+          COVERAGE=$(deno coverage coverage/ 2>&1 | tail -1 | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
+          echo "Coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 95" | bc -l)" -eq 1 ]; then
+            echo "::error::Coverage ${COVERAGE}% is below 95% threshold"
+            exit 1
+          fi
+
       - name: Upload coverage artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -75,3 +84,31 @@ jobs:
 
       - name: Run smoke test
         run: swamp workflow run smoke-test --json
+
+  publish:
+    runs-on: macos-latest
+    needs: smoke-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install swamp
+        run: |
+          curl -fsSL swamp.club/install.sh | sh
+          SWAMP_BIN="$(find "$HOME" /usr/local -name swamp -type f 2>/dev/null | head -1)"
+          if [ -z "$SWAMP_BIN" ]; then
+            echo "swamp binary not found after install" >&2
+            exit 1
+          fi
+          echo "$(dirname "$SWAMP_BIN")" >> "$GITHUB_PATH"
+          "$SWAMP_BIN" --version
+
+      - name: Authenticate with swamp registry
+        run: swamp auth login --no-browser --username "$SWAMP_USERNAME" --password "$SWAMP_PASSWORD"
+        env:
+          SWAMP_USERNAME: ${{ secrets.SWAMP_USERNAME }}
+          SWAMP_PASSWORD: ${{ secrets.SWAMP_PASSWORD }}
+
+      - name: Publish extension
+        run: swamp extension push manifest.yaml -y --json
