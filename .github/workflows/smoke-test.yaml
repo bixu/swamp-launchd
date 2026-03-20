@@ -13,7 +13,7 @@ jobs:
 
       - name: Install swamp
         run: |
-          curl -fsSL https://get.swamp.club | bash
+          curl -fsSL swamp.club/install.sh | sh
           # Find the swamp binary and add its directory to PATH for subsequent steps
           SWAMP_BIN="$(find "$HOME" /usr/local -name swamp -type f 2>/dev/null | head -1)"
           if [ -z "$SWAMP_BIN" ]; then
