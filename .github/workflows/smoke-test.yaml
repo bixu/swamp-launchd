@@ -105,10 +105,18 @@ jobs:
           "$SWAMP_BIN" --version
 
       - name: Authenticate with swamp registry
-        run: swamp auth login --no-browser --username "$SWAMP_USERNAME" --password "$SWAMP_PASSWORD"
+        run: |
+          mkdir -p ~/.config/swamp
+          cat > ~/.config/swamp/auth.json <<AUTHEOF
+          {
+            "serverUrl": "https://swamp.club",
+            "apiKey": "${SWAMP_ACCESS_TOKEN}",
+            "apiKeyId": "ci",
+            "username": "bixu"
+          }
+          AUTHEOF
         env:
-          SWAMP_USERNAME: ${{ secrets.SWAMP_USERNAME }}
-          SWAMP_PASSWORD: ${{ secrets.SWAMP_PASSWORD }}
+          SWAMP_ACCESS_TOKEN: ${{ secrets.SWAMP_ACCESS_TOKEN }}
 
       - name: Publish extension
         run: swamp extension push manifest.yaml -y --json
