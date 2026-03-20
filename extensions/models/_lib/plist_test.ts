@@ -374,3 +374,25 @@ Deno.test("scanPlistDirectories returns empty for impossible pattern", async () 
   const results = await scanPlistDirectories("zzz-nonexistent-pattern-zzz");
   assertEquals(results.length, 0);
 });
+
+Deno.test("scanPlistDirectories skips nonexistent directories", async () => {
+  const results = await scanPlistDirectories(undefined, [
+    "/nonexistent/dir/that/does/not/exist",
+    "/another/fake/LaunchDaemons/path",
+  ]);
+  assertEquals(results.length, 0);
+});
+
+Deno.test("scanPlistDirectories ignores non-plist files", async () => {
+  const tmpDir = await Deno.makeTempDir();
+  try {
+    await Deno.writeTextFile(`${tmpDir}/com.test.valid.plist`, "<plist/>");
+    await Deno.writeTextFile(`${tmpDir}/.DS_Store`, "");
+    await Deno.writeTextFile(`${tmpDir}/readme.txt`, "");
+    const results = await scanPlistDirectories(undefined, [tmpDir]);
+    assertEquals(results.length, 1);
+    assertEquals(results[0].label, "com.test.valid");
+  } finally {
+    await Deno.remove(tmpDir, { recursive: true });
+  }
+});

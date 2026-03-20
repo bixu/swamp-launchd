@@ -40,9 +40,11 @@ export async function validatePlist(
   if (result.success) {
     return { valid: true, errors: [] };
   }
+  // plutil outputs errors on stdout, not stderr
+  const output = result.stderr || result.stdout;
   return {
     valid: false,
-    errors: result.stderr.split("\n").filter((l) => l.trim().length > 0),
+    errors: output.split("\n").filter((l) => l.trim().length > 0),
   };
 }
 
@@ -209,10 +211,11 @@ export interface DiscoveredPlist {
 
 export async function scanPlistDirectories(
   pattern?: string,
+  dirs?: string[],
 ): Promise<DiscoveredPlist[]> {
   const results: DiscoveredPlist[] = [];
 
-  for (const dir of getPlistSearchDirs()) {
+  for (const dir of (dirs ?? getPlistSearchDirs())) {
     let entries: Deno.DirEntry[];
     try {
       entries = [];

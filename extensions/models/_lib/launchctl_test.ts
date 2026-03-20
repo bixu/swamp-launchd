@@ -187,6 +187,15 @@ Deno.test("parseServiceDetail returns nulls for missing fields", () => {
   assertEquals(result.keepAlive, null);
 });
 
+Deno.test("parseServiceDetail parses 'keepalive' alternate spelling", () => {
+  const output = `
+    state = running
+    keepalive = 1
+  `;
+  const result = parseServiceDetail(output);
+  assertEquals(result.keepAlive, true);
+});
+
 // ── parseServiceList ────────────────────────────────────────────────────────
 
 const SAMPLE_SERVICE_LIST = `
@@ -271,6 +280,19 @@ Deno.test("parseServiceList handles empty services block", () => {
     }
   `;
   assertEquals(parseServiceList(output), []);
+});
+
+Deno.test("parseServiceList handles non-numeric PID and exit code", () => {
+  const output = `
+    services = {
+      abc  xyz  com.example.weird
+    }
+  `;
+  const items = parseServiceList(output);
+  assertEquals(items.length, 1);
+  assertEquals(items[0].pid, null);
+  assertEquals(items[0].exitCode, null);
+  assertEquals(items[0].status, "not running");
 });
 
 // ── explainExitCode ─────────────────────────────────────────────────────────
