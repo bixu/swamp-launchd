@@ -239,6 +239,8 @@ export async function scanPlistDirectories(
     }
   }
 
-  results.sort((a, b) => a.label.localeCompare(b.label));
+  results.sort((a, b) =>
+    a.label.localeCompare(b.label, "en", { sensitivity: "base" })
+  );
   return results;
 }

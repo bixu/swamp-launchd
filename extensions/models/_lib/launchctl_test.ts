@@ -1,11 +1,16 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import {
   domainTarget,
   explainExitCode,
+  findPlist,
+  getPlistSearchDirs,
+  getUid,
+  launchctl,
   parseServiceDetail,
   parseServiceList,
   parseServiceStatus,
   resolvePlistPath,
+  runCmd,
 } from "./launchctl.ts";
 
 // ── domainTarget ────────────────────────────────────────────────────────────
@@ -295,4 +300,63 @@ Deno.test("explainExitCode handles unknown non-signal codes", () => {
 
 Deno.test("explainExitCode handles null", () => {
   assertEquals(explainExitCode(null), "No exit code recorded");
+});
+
+// ── getUid ──────────────────────────────────────────────────────────────────
+
+Deno.test("getUid returns a numeric uid", async () => {
+  const uid = await getUid();
+  assertEquals(/^\d+$/.test(uid), true);
+});
+
+// ── runCmd ──────────────────────────────────────────────────────────────────
+
+Deno.test("runCmd executes a command and returns output", async () => {
+  const result = await runCmd("echo", ["hello"]);
+  assertEquals(result.success, true);
+  assertEquals(result.code, 0);
+  assertEquals(result.stdout.trim(), "hello");
+  assertEquals(result.stderr, "");
+});
+
+Deno.test("runCmd returns failure for bad commands", async () => {
+  const result = await runCmd("false", []);
+  assertEquals(result.success, false);
+  assertNotEquals(result.code, 0);
+});
+
+// ── launchctl ───────────────────────────────────────────────────────────────
+
+Deno.test("launchctl version returns successfully", async () => {
+  const result = await launchctl(["version"]);
+  assertEquals(result.success, true);
+  assertEquals(result.stdout.length > 0, true);
+});
+
+Deno.test("launchctl returns failure for invalid subcommand", async () => {
+  const result = await launchctl(["this-is-not-a-subcommand"]);
+  assertEquals(result.success, false);
+});
+
+// ── getPlistSearchDirs ──────────────────────────────────────────────────────
+
+Deno.test("getPlistSearchDirs returns standard macOS directories", () => {
+  const dirs = getPlistSearchDirs();
+  assertEquals(dirs.length, 5);
+  assertEquals(dirs.some((d) => d.includes("LaunchAgents")), true);
+  assertEquals(dirs.some((d) => d.includes("LaunchDaemons")), true);
+  assertEquals(dirs[0].includes("Library/LaunchAgents"), true);
+});
+
+// ── findPlist ───────────────────────────────────────────────────────────────
+
+Deno.test("findPlist finds a known system plist", () => {
+  const path = findPlist("com.openssh.ssh-agent");
+  assertNotEquals(path, null);
+  assertEquals(path!.endsWith("com.openssh.ssh-agent.plist"), true);
+});
+
+Deno.test("findPlist returns null for nonexistent label", () => {
+  const path = findPlist("com.nonexistent.this-does-not-exist-anywhere");
+  assertEquals(path, null);
 });
