@@ -1,23 +1,47 @@
-name: Smoke Test
+name: CI
 
 on:
   pull_request:
     branches: [main]
 
 jobs:
-  smoke-test:
+  lint-and-test:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Format check
+        run: deno fmt --check
+
+      - name: Lint
+        run: deno lint
+
+      - name: Unit tests
+        run: deno test --allow-env --allow-read --allow-run
+
+  smoke-test:
+    runs-on: macos-latest
+    needs: lint-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install swamp
         run: |
-          curl -fsSL https://get.swamp.club | bash
-          echo "$HOME/.swamp/bin" >> "$GITHUB_PATH"
-
-      - name: Initialize swamp repo
-        run: swamp init --tool ci --json
+          curl -fsSL swamp.club/install.sh | sh
+          SWAMP_BIN="$(find "$HOME" /usr/local -name swamp -type f 2>/dev/null | head -1)"
+          if [ -z "$SWAMP_BIN" ]; then
+            echo "swamp binary not found after install" >&2
+            exit 1
+          fi
+          echo "$(dirname "$SWAMP_BIN")" >> "$GITHUB_PATH"
+          "$SWAMP_BIN" --version
 
       - name: Register model instances
         run: |
@@ -27,6 +51,9 @@ jobs:
             --json
           swamp model create @bixu/launchd-daemon my-daemons \
             --global-arg label=all \
+            --json
+          swamp model create @bixu/launchd-daemon test-ssh-agent \
+            --global-arg label=com.openssh.ssh-agent \
             --json
 
       - name: Validate workflow
