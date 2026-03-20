@@ -42,7 +42,9 @@ const VENDOR_MAP: Record<string, string> = {
 };
 
 // Sorted by length descending for longest-prefix match
-const SORTED_PREFIXES = Object.keys(VENDOR_MAP).sort((a, b) => b.length - a.length);
+const SORTED_PREFIXES = Object.keys(VENDOR_MAP).sort((a, b) =>
+  b.length - a.length
+);
 
 export function extractVendor(label: string): string {
   let cleaned = label;

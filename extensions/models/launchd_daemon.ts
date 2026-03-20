@@ -1,23 +1,38 @@
 // extensions/models/launchd_daemon.ts
-import { z } from "npm:zod@4";
+import { z } from "zod";
 import {
-  getUid, domainTarget, launchctl, runCmd,
-  parseServiceStatus, parseServiceDetail, parseServiceList,
-  findPlist, resolvePlistPath, explainExitCode,
-  PLIST_SEARCH_DIRS,
+  domainTarget,
+  explainExitCode,
+  findPlist,
+  getPlistSearchDirs,
+  getUid,
+  launchctl,
+  parseServiceDetail,
+  parseServiceList,
+  parseServiceStatus,
+  resolvePlistPath,
+  runCmd,
 } from "./_lib/launchctl.ts";
 import { extractVendor } from "./_lib/vendor.ts";
 import {
-  getPlistInfo, validatePlist, generatePlistXml,
-  scanPlistDirectories, readPlist, parsePlistData,
+  generatePlistXml,
+  getPlistInfo,
+  scanPlistDirectories,
+  validatePlist,
 } from "./_lib/plist.ts";
 
 // ── Schemas ─────────────────────────────────────────────────────────────────
 
 const GlobalArgsSchema = z.object({
-  label: z.string().describe("The launchd job label (e.g., com.example.mydaemon)"),
-  plistPath: z.string().optional().describe("Path to the plist file. If omitted, searches standard launchd directories."),
-  domain: z.enum(["system", "gui", "user"]).default("gui").describe("The launchd domain (system, gui, user)"),
+  label: z.string().describe(
+    "The launchd job label (e.g., com.example.mydaemon)",
+  ),
+  plistPath: z.string().optional().describe(
+    "Path to the plist file. If omitted, searches standard launchd directories.",
+  ),
+  domain: z.enum(["system", "gui", "user"]).default("gui").describe(
+    "The launchd domain (system, gui, user)",
+  ),
 });
 
 const DaemonSchema = z.object({
@@ -144,8 +159,13 @@ async function getServiceTarget(globalArgs: { label: string; domain: string }) {
   return { uid, target, serviceTarget: `${target}/${globalArgs.label}` };
 }
 
-function resolvePath(globalArgs: { plistPath?: string; label: string }, repoDir: string): string | null {
-  if (globalArgs.plistPath) return resolvePlistPath(globalArgs.plistPath, repoDir);
+function resolvePath(
+  globalArgs: { plistPath?: string; label: string },
+  repoDir: string,
+): string | null {
+  if (globalArgs.plistPath) {
+    return resolvePlistPath(globalArgs.plistPath, repoDir);
+  }
   return findPlist(globalArgs.label);
 }
 
@@ -214,7 +234,8 @@ export const model = {
       garbageCollection: 5,
     },
     "orphans": {
-      description: "Orphaned daemons (loaded without plist, or plist not loaded)",
+      description:
+        "Orphaned daemons (loaded without plist, or plist not loaded)",
       schema: z.object({
         items: z.array(OrphanSchema),
         count: z.number(),
@@ -266,10 +287,20 @@ export const model = {
       execute: async () => {
         try {
           const result = await launchctl(["version"]);
-          if (!result.success) return { pass: false, errors: ["launchctl returned a non-zero exit code — is this macOS?"] };
+          if (!result.success) {
+            return {
+              pass: false,
+              errors: [
+                "launchctl returned a non-zero exit code — is this macOS?",
+              ],
+            };
+          }
           return { pass: true };
         } catch {
-          return { pass: false, errors: ["launchctl not found — this model requires macOS"] };
+          return {
+            pass: false,
+            errors: ["launchctl not found — this model requires macOS"],
+          };
         }
       },
     },
@@ -280,7 +311,12 @@ export const model = {
         const { target } = await getServiceTarget(context.globalArgs);
         const result = await launchctl(["print", target]);
         if (!result.success) {
-          return { pass: false, errors: [`Cannot access domain "${target}": ${result.stderr.trim()}.`] };
+          return {
+            pass: false,
+            errors: [
+              `Cannot access domain "${target}": ${result.stderr.trim()}.`,
+            ],
+          };
         }
         return { pass: true };
       },
@@ -296,15 +332,20 @@ export const model = {
       execute: async (_args, context) => {
         const { label, domain } = context.globalArgs;
         const { target } = await getServiceTarget(context.globalArgs);
-        let plistPath = resolvePath(context.globalArgs, context.repoDir);
+        const plistPath = resolvePath(context.globalArgs, context.repoDir);
 
         if (!plistPath) {
-          throw new Error(`No plist found for label "${label}". Provide plistPath explicitly.`);
+          throw new Error(
+            `No plist found for label "${label}". Provide plistPath explicitly.`,
+          );
         }
 
         const result = await launchctl(["bootstrap", target, plistPath]);
         if (!result.success) {
-          if (result.stderr.includes("36:") || result.stderr.includes("already loaded")) {
+          if (
+            result.stderr.includes("36:") ||
+            result.stderr.includes("already loaded")
+          ) {
             context.logger.info("Daemon {label} is already loaded", { label });
           } else {
             throw new Error(`Failed to load daemon: ${result.stderr.trim()}`);
@@ -315,8 +356,12 @@ export const model = {
         const parsed = parseServiceStatus(statusResult.stdout);
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: parsed.status || "loaded", pid: parsed.pid,
-          exitCode: parsed.exitCode, plistPath, domain,
+          label,
+          status: parsed.status || "loaded",
+          pid: parsed.pid,
+          exitCode: parsed.exitCode,
+          plistPath,
+          domain,
           syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -332,7 +377,10 @@ export const model = {
 
         const result = await launchctl(["bootout", serviceTarget]);
         if (!result.success) {
-          if (result.stderr.includes("3:") || result.stderr.includes("Could not find service")) {
+          if (
+            result.stderr.includes("3:") ||
+            result.stderr.includes("Could not find service")
+          ) {
             context.logger.info("Daemon {label} is not loaded", { label });
           } else {
             throw new Error(`Failed to unload daemon: ${result.stderr.trim()}`);
@@ -355,16 +403,21 @@ export const model = {
         }
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: "enabled", pid: null, exitCode: null,
+          label,
+          status: "enabled",
+          pid: null,
+          exitCode: null,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, syncedAt: new Date().toISOString(),
+          domain,
+          syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
     },
 
     disable: {
-      description: "Disable the daemon (persists across reboots, does not unload)",
+      description:
+        "Disable the daemon (persists across reboots, does not unload)",
       arguments: z.object({}),
       execute: async (_args, context) => {
         const { label, domain } = context.globalArgs;
@@ -376,9 +429,13 @@ export const model = {
         }
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: "disabled", pid: null, exitCode: null,
+          label,
+          status: "disabled",
+          pid: null,
+          exitCode: null,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, syncedAt: new Date().toISOString(),
+          domain,
+          syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
@@ -387,7 +444,9 @@ export const model = {
     start: {
       description: "Start (kickstart) the daemon",
       arguments: z.object({
-        force: z.boolean().default(false).describe("Force restart even if already running (-k flag)"),
+        force: z.boolean().default(false).describe(
+          "Force restart even if already running (-k flag)",
+        ),
       }),
       execute: async (args, context) => {
         const { label, domain } = context.globalArgs;
@@ -398,16 +457,21 @@ export const model = {
         kickstartArgs.push(serviceTarget);
 
         const result = await launchctl(kickstartArgs);
-        if (!result.success) throw new Error(`Failed to start daemon: ${result.stderr.trim()}`);
+        if (!result.success) {
+          throw new Error(`Failed to start daemon: ${result.stderr.trim()}`);
+        }
 
         const statusResult = await launchctl(["print", serviceTarget]);
         const parsed = parseServiceStatus(statusResult.stdout);
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: parsed.status || "running", pid: parsed.pid,
+          label,
+          status: parsed.status || "running",
+          pid: parsed.pid,
           exitCode: parsed.exitCode,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, syncedAt: new Date().toISOString(),
+          domain,
+          syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
@@ -429,10 +493,13 @@ export const model = {
         const parsed = parseServiceStatus(statusResult.stdout);
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: parsed.status || "stopped", pid: parsed.pid,
+          label,
+          status: parsed.status || "stopped",
+          pid: parsed.pid,
           exitCode: parsed.exitCode,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, syncedAt: new Date().toISOString(),
+          domain,
+          syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
@@ -447,16 +514,21 @@ export const model = {
 
         // kickstart -k kills and restarts in one operation
         const result = await launchctl(["kickstart", "-k", serviceTarget]);
-        if (!result.success) throw new Error(`Failed to restart daemon: ${result.stderr.trim()}`);
+        if (!result.success) {
+          throw new Error(`Failed to restart daemon: ${result.stderr.trim()}`);
+        }
 
         const statusResult = await launchctl(["print", serviceTarget]);
         const parsed = parseServiceStatus(statusResult.stdout);
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: parsed.status || "running", pid: parsed.pid,
+          label,
+          status: parsed.status || "running",
+          pid: parsed.pid,
           exitCode: parsed.exitCode,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, syncedAt: new Date().toISOString(),
+          domain,
+          syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
@@ -472,38 +544,53 @@ export const model = {
         const { serviceTarget } = await getServiceTarget(context.globalArgs);
 
         const result = await launchctl(["print", serviceTarget]);
-        const parsed = result.success ? parseServiceStatus(result.stdout) : { pid: null, exitCode: null, status: "not_found" };
+        const parsed = result.success
+          ? parseServiceStatus(result.stdout)
+          : { pid: null, exitCode: null, status: "not_found" };
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: parsed.status, pid: parsed.pid, exitCode: parsed.exitCode,
+          label,
+          status: parsed.status,
+          pid: parsed.pid,
+          exitCode: parsed.exitCode,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, syncedAt: new Date().toISOString(),
+          domain,
+          syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
     },
 
     detail: {
-      description: "Get detailed daemon info: program, environment, mach services, limits",
+      description:
+        "Get detailed daemon info: program, environment, mach services, limits",
       arguments: z.object({}),
       execute: async (_args, context) => {
         const { label, domain } = context.globalArgs;
         const { serviceTarget } = await getServiceTarget(context.globalArgs);
 
         const result = await launchctl(["print", serviceTarget]);
-        if (!result.success) throw new Error(`Daemon not found: ${result.stderr.trim()}`);
+        if (!result.success) {
+          throw new Error(`Daemon not found: ${result.stderr.trim()}`);
+        }
 
         const info = parseServiceDetail(result.stdout);
 
         const handle = await context.writeResource("detail", "main", {
-          label, status: info.status, pid: info.pid,
+          label,
+          status: info.status,
+          pid: info.pid,
           exitCode: info.exitCode,
           exitCodeExplanation: explainExitCode(info.exitCode),
-          program: info.program, programArguments: info.programArguments,
+          program: info.program,
+          programArguments: info.programArguments,
           environmentVariables: info.environmentVariables,
-          machServices: info.machServices, enabledState: info.enabledState,
-          timeout: info.timeout, onDemand: info.onDemand,
-          keepAlive: info.keepAlive, domain,
+          machServices: info.machServices,
+          enabledState: info.enabledState,
+          timeout: info.timeout,
+          onDemand: info.onDemand,
+          keepAlive: info.keepAlive,
+          domain,
           syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -520,10 +607,13 @@ export const model = {
         const result = await launchctl(["blame", serviceTarget]);
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: result.success ? "loaded" : "not_found",
-          pid: null, exitCode: null,
+          label,
+          status: result.success ? "loaded" : "not_found",
+          pid: null,
+          exitCode: null,
           plistPath: resolvePath(context.globalArgs, context.repoDir),
-          domain, blame: result.stdout.trim(),
+          domain,
+          blame: result.stdout.trim(),
           syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -531,7 +621,8 @@ export const model = {
     },
 
     diagnose: {
-      description: "Diagnose daemon issues: check exit codes, plist validity, loaded state",
+      description:
+        "Diagnose daemon issues: check exit codes, plist validity, loaded state",
       arguments: z.object({}),
       execute: async (_args, context) => {
         const { label, domain } = context.globalArgs;
@@ -547,10 +638,16 @@ export const model = {
         } else {
           const info = parseServiceDetail(printResult.stdout);
           if (info.exitCode !== null && info.exitCode !== 0) {
-            issues.push(`Last exit code ${info.exitCode}: ${explainExitCode(info.exitCode)}`);
+            issues.push(
+              `Last exit code ${info.exitCode}: ${
+                explainExitCode(info.exitCode)
+              }`,
+            );
           }
           if (info.status === "waiting") {
-            issues.push("Daemon is in 'waiting' state — may be throttled after repeated crashes");
+            issues.push(
+              "Daemon is in 'waiting' state — may be throttled after repeated crashes",
+            );
           }
         }
 
@@ -559,7 +656,9 @@ export const model = {
           try {
             const validation = await validatePlist(plistPath);
             if (!validation.valid) {
-              issues.push(`Plist validation failed: ${validation.errors.join("; ")}`);
+              issues.push(
+                `Plist validation failed: ${validation.errors.join("; ")}`,
+              );
             }
           } catch {
             issues.push(`Plist file not readable at ${plistPath}`);
@@ -568,14 +667,20 @@ export const model = {
           issues.push("No plist file found on disk");
         }
 
-        const parsed = printResult.success ? parseServiceStatus(printResult.stdout) : { pid: null, exitCode: null, status: "not_found" };
+        const parsed = printResult.success
+          ? parseServiceStatus(printResult.stdout)
+          : { pid: null, exitCode: null, status: "not_found" };
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: parsed.status, pid: parsed.pid,
+          label,
+          status: parsed.status,
+          pid: parsed.pid,
           exitCode: parsed.exitCode,
           exitCodeExplanation: explainExitCode(parsed.exitCode),
-          plistPath, domain,
-          issues, issueCount: issues.length,
+          plistPath,
+          domain,
+          issues,
+          issueCount: issues.length,
           syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -585,28 +690,42 @@ export const model = {
     logs: {
       description: "Fetch daemon logs from macOS unified logging",
       arguments: z.object({
-        lines: z.number().default(50).describe("Max number of log lines to return"),
-        level: z.enum(["default", "info", "debug", "error", "fault"]).default("default").describe("Minimum log level"),
-        since: z.string().default("1h").describe("Time window (e.g., 1h, 30m, 1d)"),
+        lines: z.number().default(50).describe(
+          "Max number of log lines to return",
+        ),
+        level: z.enum(["default", "info", "debug", "error", "fault"]).default(
+          "default",
+        ).describe("Minimum log level"),
+        since: z.string().default("1h").describe(
+          "Time window (e.g., 1h, 30m, 1d)",
+        ),
       }),
       execute: async (args, context) => {
         const { label } = context.globalArgs;
 
         const result = await runCmd("log", [
           "show",
-          "--predicate", `subsystem == "${label}" OR senderImagePath CONTAINS "${label}"`,
-          "--style", "compact",
-          "--last", args.since,
+          "--predicate",
+          `subsystem == "${label}" OR senderImagePath CONTAINS "${label}"`,
+          "--style",
+          "compact",
+          "--last",
+          args.since,
           "--info",
           ...(args.level === "debug" ? ["--debug"] : []),
         ]);
 
-        const allLines = result.stdout.split("\n").filter((l) => l.trim().length > 0);
+        const allLines = result.stdout.split("\n").filter((l) =>
+          l.trim().length > 0
+        );
         const lines = allLines.slice(-args.lines);
 
         const handle = await context.writeResource("logs", "main", {
-          label, lines, lineCount: lines.length,
-          level: args.level, since: args.since,
+          label,
+          lines,
+          lineCount: lines.length,
+          level: args.level,
+          since: args.since,
           queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -630,10 +749,14 @@ export const model = {
         ]);
 
         const handle = await context.writeResource("plistInfo", "main", {
-          label: info.label, path: info.path,
-          valid: validation.valid, validationErrors: validation.errors,
-          program: info.program, programArguments: info.programArguments,
-          runAtLoad: info.runAtLoad, keepAlive: info.keepAlive,
+          label: info.label,
+          path: info.path,
+          valid: validation.valid,
+          validationErrors: validation.errors,
+          program: info.program,
+          programArguments: info.programArguments,
+          runAtLoad: info.runAtLoad,
+          keepAlive: info.keepAlive,
           startInterval: info.startInterval,
           startCalendarInterval: info.startCalendarInterval,
           watchPaths: info.watchPaths,
@@ -641,7 +764,8 @@ export const model = {
           workingDirectory: info.workingDirectory,
           standardOutPath: info.standardOutPath,
           standardErrorPath: info.standardErrorPath,
-          disabled: info.disabled, rawKeys: info.rawKeys,
+          disabled: info.disabled,
+          rawKeys: info.rawKeys,
           queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -651,13 +775,20 @@ export const model = {
     createPlist: {
       description: "Generate a new plist file for a launchd daemon",
       arguments: z.object({
-        outputPath: z.string().describe("Path to write the plist file (relative to repo or absolute)"),
-        programArguments: z.array(z.string()).describe("Command and arguments to run"),
+        outputPath: z.string().describe(
+          "Path to write the plist file (relative to repo or absolute)",
+        ),
+        programArguments: z.array(z.string()).describe(
+          "Command and arguments to run",
+        ),
         runAtLoad: z.boolean().default(false),
         keepAlive: z.boolean().default(false),
         startInterval: z.number().optional().describe("Run every N seconds"),
-        startCalendarInterval: z.record(z.string(), z.number()).optional().describe("Cron-like schedule (Hour, Minute, Weekday, etc.)"),
-        watchPaths: z.array(z.string()).optional().describe("Paths to watch for changes"),
+        startCalendarInterval: z.record(z.string(), z.number()).optional()
+          .describe("Cron-like schedule (Hour, Minute, Weekday, etc.)"),
+        watchPaths: z.array(z.string()).optional().describe(
+          "Paths to watch for changes",
+        ),
         environmentVariables: z.record(z.string(), z.string()).optional(),
         workingDirectory: z.string().optional(),
         standardOutPath: z.string().optional(),
@@ -686,19 +817,25 @@ export const model = {
         const validation = await validatePlist(outputPath);
 
         const handle = await context.writeResource("plistInfo", "main", {
-          label, path: outputPath,
-          valid: validation.valid, validationErrors: validation.errors,
-          program: null, programArguments: args.programArguments,
+          label,
+          path: outputPath,
+          valid: validation.valid,
+          validationErrors: validation.errors,
+          program: null,
+          programArguments: args.programArguments,
           runAtLoad: args.runAtLoad,
           keepAlive: args.keepAlive,
           startInterval: args.startInterval ?? null,
-          startCalendarInterval: args.startCalendarInterval ? [args.startCalendarInterval] : null,
+          startCalendarInterval: args.startCalendarInterval
+            ? [args.startCalendarInterval]
+            : null,
           watchPaths: args.watchPaths ?? [],
           environmentVariables: args.environmentVariables ?? {},
           workingDirectory: args.workingDirectory ?? null,
           standardOutPath: args.standardOutPath ?? null,
           standardErrorPath: args.standardErrorPath ?? null,
-          disabled: false, rawKeys: ["Label", "ProgramArguments"],
+          disabled: false,
+          rawKeys: ["Label", "ProgramArguments"],
           queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -708,22 +845,34 @@ export const model = {
     // ── Discovery ─────────────────────────────────────────────────────────
 
     list: {
-      description: "List daemons loaded in the domain, filtered by status and pattern",
+      description:
+        "List daemons loaded in the domain, filtered by status and pattern",
       arguments: z.object({
-        pattern: z.string().default("").describe("Filter pattern to match against labels"),
-        status: z.enum(["all", "running", "not running"]).default("all").describe("Filter by daemon status"),
+        pattern: z.string().default("").describe(
+          "Filter pattern to match against labels",
+        ),
+        status: z.enum(["all", "running", "not running"]).default("all")
+          .describe("Filter by daemon status"),
       }),
       execute: async (args, context) => {
         const { target } = await getServiceTarget(context.globalArgs);
 
         const result = await launchctl(["print", target]);
-        if (!result.success) throw new Error(`Failed to list daemons: ${result.stderr.trim()}`);
+        if (!result.success) {
+          throw new Error(`Failed to list daemons: ${result.stderr.trim()}`);
+        }
 
-        const items = parseServiceList(result.stdout, args.pattern || undefined, args.status);
+        const items = parseServiceList(
+          result.stdout,
+          args.pattern || undefined,
+          args.status,
+        );
 
         const handle = await context.writeResource("list", "main", {
-          items, pattern: args.pattern || "*",
-          count: items.length, queriedAt: new Date().toISOString(),
+          items,
+          pattern: args.pattern || "*",
+          count: items.length,
+          queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
@@ -738,7 +887,9 @@ export const model = {
         const { target } = await getServiceTarget(context.globalArgs);
 
         const result = await launchctl(["print", target]);
-        if (!result.success) throw new Error(`Failed to list daemons: ${result.stderr.trim()}`);
+        if (!result.success) {
+          throw new Error(`Failed to list daemons: ${result.stderr.trim()}`);
+        }
 
         const items = parseServiceList(result.stdout, undefined, args.status);
         const grouped: Record<string, string[]> = {};
@@ -749,19 +900,26 @@ export const model = {
         }
 
         const vendors = Object.entries(grouped)
-          .map(([vendor, labels]) => ({ vendor, daemonCount: labels.length, labels: labels.sort() }))
+          .map(([vendor, labels]) => ({
+            vendor,
+            daemonCount: labels.length,
+            labels: labels.sort(),
+          }))
           .sort((a, b) => b.daemonCount - a.daemonCount);
 
         const handle = await context.writeResource("vendors", "main", {
-          vendors, totalVendors: vendors.length,
-          totalDaemons: items.length, queriedAt: new Date().toISOString(),
+          vendors,
+          totalVendors: vendors.length,
+          totalDaemons: items.length,
+          queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
       },
     },
 
     scan: {
-      description: "Scan plist directories to discover all installed daemons (loaded or not)",
+      description:
+        "Scan plist directories to discover all installed daemons (loaded or not)",
       arguments: z.object({
         pattern: z.string().default("").describe("Filter pattern for labels"),
       }),
@@ -777,15 +935,18 @@ export const model = {
           }
         }
 
-        const discovered = await scanPlistDirectories(args.pattern || undefined);
+        const discovered = await scanPlistDirectories(
+          args.pattern || undefined,
+        );
         const items = discovered.map((d) => ({
           ...d,
           loaded: loadedLabels.has(d.label),
         }));
 
         const handle = await context.writeResource("scan", "main", {
-          items, count: items.length,
-          directories: PLIST_SEARCH_DIRS,
+          items,
+          count: items.length,
+          directories: getPlistSearchDirs(),
           queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -793,7 +954,8 @@ export const model = {
     },
 
     orphans: {
-      description: "Find orphaned daemons: loaded but no plist on disk, or plist exists but not loaded",
+      description:
+        "Find orphaned daemons: loaded but no plist on disk, or plist exists but not loaded",
       arguments: z.object({
         pattern: z.string().default("").describe("Filter pattern for labels"),
       }),
@@ -804,38 +966,64 @@ export const model = {
         const printResult = await launchctl(["print", target]);
         const loadedLabels = new Set<string>();
         if (printResult.success) {
-          for (const item of parseServiceList(printResult.stdout, args.pattern || undefined)) {
+          for (
+            const item of parseServiceList(
+              printResult.stdout,
+              args.pattern || undefined,
+            )
+          ) {
             loadedLabels.add(item.label);
           }
         }
 
         // Get plist files on disk
         const plists = await scanPlistDirectories(args.pattern || undefined);
-        const plistLabels = new Map<string, { path: string; directory: string }>();
+        const plistLabels = new Map<
+          string,
+          { path: string; directory: string }
+        >();
         for (const p of plists) {
           plistLabels.set(p.label, { path: p.path, directory: p.directory });
         }
 
-        const orphans: Array<{ label: string; type: "loaded_no_plist" | "plist_not_loaded"; path: string | null; directory: string | null }> = [];
+        const orphans: Array<
+          {
+            label: string;
+            type: "loaded_no_plist" | "plist_not_loaded";
+            path: string | null;
+            directory: string | null;
+          }
+        > = [];
 
         // Loaded but no plist
         for (const label of loadedLabels) {
           if (!plistLabels.has(label)) {
-            orphans.push({ label, type: "loaded_no_plist", path: null, directory: null });
+            orphans.push({
+              label,
+              type: "loaded_no_plist",
+              path: null,
+              directory: null,
+            });
           }
         }
 
         // Plist exists but not loaded
         for (const [label, info] of plistLabels) {
           if (!loadedLabels.has(label)) {
-            orphans.push({ label, type: "plist_not_loaded", path: info.path, directory: info.directory });
+            orphans.push({
+              label,
+              type: "plist_not_loaded",
+              path: info.path,
+              directory: info.directory,
+            });
           }
         }
 
         orphans.sort((a, b) => a.label.localeCompare(b.label));
 
         const handle = await context.writeResource("orphans", "main", {
-          items: orphans, count: orphans.length,
+          items: orphans,
+          count: orphans.length,
           queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -843,18 +1031,23 @@ export const model = {
     },
 
     diff: {
-      description: "Compare plist on disk vs loaded state in launchd (drift detection)",
+      description:
+        "Compare plist on disk vs loaded state in launchd (drift detection)",
       arguments: z.object({}),
       execute: async (_args, context) => {
         const { label, domain } = context.globalArgs;
         const { serviceTarget } = await getServiceTarget(context.globalArgs);
         const plistPath = resolvePath(context.globalArgs, context.repoDir);
 
-        const differences: Array<{ field: string; plist: string; loaded: string }> = [];
+        const differences: Array<
+          { field: string; plist: string; loaded: string }
+        > = [];
 
         // Get loaded state
         const printResult = await launchctl(["print", serviceTarget]);
-        if (!printResult.success) throw new Error("Daemon not loaded — nothing to compare");
+        if (!printResult.success) {
+          throw new Error("Daemon not loaded — nothing to compare");
+        }
 
         const loadedInfo = parseServiceDetail(printResult.stdout);
 
@@ -863,31 +1056,56 @@ export const model = {
         const plistInfo = await getPlistInfo(plistPath);
 
         // Compare program
-        if (plistInfo.program && loadedInfo.program && plistInfo.program !== loadedInfo.program) {
-          differences.push({ field: "program", plist: plistInfo.program, loaded: loadedInfo.program });
+        if (
+          plistInfo.program && loadedInfo.program &&
+          plistInfo.program !== loadedInfo.program
+        ) {
+          differences.push({
+            field: "program",
+            plist: plistInfo.program,
+            loaded: loadedInfo.program,
+          });
         }
 
         // Compare program arguments
         const plistArgs = JSON.stringify(plistInfo.programArguments);
         const loadedArgs = JSON.stringify(loadedInfo.programArguments);
-        if (plistArgs !== loadedArgs && loadedInfo.programArguments.length > 0) {
-          differences.push({ field: "programArguments", plist: plistArgs, loaded: loadedArgs });
+        if (
+          plistArgs !== loadedArgs && loadedInfo.programArguments.length > 0
+        ) {
+          differences.push({
+            field: "programArguments",
+            plist: plistArgs,
+            loaded: loadedArgs,
+          });
         }
 
         // Compare environment variables
-        for (const [key, plistVal] of Object.entries(plistInfo.environmentVariables)) {
+        for (
+          const [key, plistVal] of Object.entries(
+            plistInfo.environmentVariables,
+          )
+        ) {
           const loadedVal = loadedInfo.environmentVariables[key];
           if (loadedVal !== undefined && loadedVal !== plistVal) {
-            differences.push({ field: `env.${key}`, plist: plistVal, loaded: loadedVal });
+            differences.push({
+              field: `env.${key}`,
+              plist: plistVal,
+              loaded: loadedVal,
+            });
           }
         }
 
         const handle = await context.writeResource("daemon", "main", {
-          label, status: loadedInfo.status, pid: loadedInfo.pid,
+          label,
+          status: loadedInfo.status,
+          pid: loadedInfo.pid,
           exitCode: loadedInfo.exitCode,
-          plistPath, domain,
+          plistPath,
+          domain,
           driftDetected: differences.length > 0,
-          differences, differenceCount: differences.length,
+          differences,
+          differenceCount: differences.length,
           syncedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };
@@ -897,7 +1115,8 @@ export const model = {
     // ── Reporting ─────────────────────────────────────────────────────────
 
     health: {
-      description: "Check health of daemons with KeepAlive or RunAtLoad that should be running",
+      description:
+        "Check health of daemons with KeepAlive or RunAtLoad that should be running",
       arguments: z.object({
         pattern: z.string().default("").describe("Filter pattern for labels"),
       }),
@@ -906,15 +1125,27 @@ export const model = {
 
         // Get loaded services
         const printResult = await launchctl(["print", target]);
-        if (!printResult.success) throw new Error(`Failed to query domain: ${printResult.stderr.trim()}`);
-        const loaded = parseServiceList(printResult.stdout, args.pattern || undefined);
+        if (!printResult.success) {
+          throw new Error(
+            `Failed to query domain: ${printResult.stderr.trim()}`,
+          );
+        }
+        const loaded = parseServiceList(
+          printResult.stdout,
+          args.pattern || undefined,
+        );
 
         // Get plists to find which ones have KeepAlive or RunAtLoad
         const plists = await scanPlistDirectories(args.pattern || undefined);
 
         const healthItems: Array<{
-          label: string; expected: string; actual: string; healthy: boolean;
-          pid: number | null; exitCode: number | null; exitCodeExplanation: string;
+          label: string;
+          expected: string;
+          actual: string;
+          healthy: boolean;
+          pid: number | null;
+          exitCode: number | null;
+          exitCodeExplanation: string;
           plistPath: string | null;
         }> = [];
 
@@ -928,7 +1159,9 @@ export const model = {
 
           if (!info.runAtLoad && info.keepAlive === null) continue;
 
-          const expected = (info.runAtLoad || info.keepAlive === true) ? "running" : "idle";
+          const expected = (info.runAtLoad || info.keepAlive === true)
+            ? "running"
+            : "idle";
           if (expected !== "running") continue;
 
           const loadedItem = loaded.find((l) => l.label === plist.label);
@@ -937,7 +1170,9 @@ export const model = {
 
           healthItems.push({
             label: plist.label,
-            expected, actual, healthy,
+            expected,
+            actual,
+            healthy,
             pid: loadedItem?.pid ?? null,
             exitCode: loadedItem?.exitCode ?? null,
             exitCodeExplanation: explainExitCode(loadedItem?.exitCode ?? null),
@@ -970,14 +1205,27 @@ export const model = {
         const { target } = await getServiceTarget(context.globalArgs);
 
         const printResult = await launchctl(["print", target]);
-        if (!printResult.success) throw new Error(`Failed to query domain: ${printResult.stderr.trim()}`);
+        if (!printResult.success) {
+          throw new Error(
+            `Failed to query domain: ${printResult.stderr.trim()}`,
+          );
+        }
 
-        const running = parseServiceList(printResult.stdout, args.pattern || undefined, "running");
-        const pids = running.filter((r) => r.pid && r.pid > 0).map((r) => r.pid!);
+        const running = parseServiceList(
+          printResult.stdout,
+          args.pattern || undefined,
+          "running",
+        );
+        const pids = running.filter((r) => r.pid && r.pid > 0).map((r) =>
+          r.pid!
+        );
 
         if (pids.length === 0) {
           const handle = await context.writeResource("processes", "main", {
-            items: [], count: 0, totalCpu: 0, totalRss: 0,
+            items: [],
+            count: 0,
+            totalCpu: 0,
+            totalRss: 0,
             queriedAt: new Date().toISOString(),
           });
           return { dataHandles: [handle] };
@@ -985,8 +1233,10 @@ export const model = {
 
         // Get process info from ps
         const psResult = await runCmd("ps", [
-          "-o", "pid=,pcpu=,pmem=,rss=,vsz=,command=",
-          "-p", pids.join(","),
+          "-o",
+          "pid=,pcpu=,pmem=,rss=,vsz=,command=",
+          "-p",
+          pids.join(","),
         ]);
 
         const pidToLabel = new Map<number, string>();
@@ -995,8 +1245,13 @@ export const model = {
         }
 
         const items: Array<{
-          label: string; pid: number; cpu: number; mem: number;
-          rss: number; vsz: number; command: string;
+          label: string;
+          pid: number;
+          cpu: number;
+          mem: number;
+          rss: number;
+          vsz: number;
+          command: string;
         }> = [];
 
         for (const line of psResult.stdout.split("\n")) {
@@ -1010,7 +1265,8 @@ export const model = {
           if (!label) continue;
 
           items.push({
-            label, pid,
+            label,
+            pid,
             cpu: parseFloat(parts[1]) || 0,
             mem: parseFloat(parts[2]) || 0,
             rss: parseInt(parts[3], 10) || 0,
@@ -1022,8 +1278,10 @@ export const model = {
         items.sort((a, b) => b.cpu - a.cpu || b.rss - a.rss);
 
         const handle = await context.writeResource("processes", "main", {
-          items, count: items.length,
-          totalCpu: Math.round(items.reduce((s, i) => s + i.cpu, 0) * 100) / 100,
+          items,
+          count: items.length,
+          totalCpu: Math.round(items.reduce((s, i) => s + i.cpu, 0) * 100) /
+            100,
           totalRss: items.reduce((s, i) => s + i.rss, 0),
           queriedAt: new Date().toISOString(),
         });
@@ -1032,7 +1290,8 @@ export const model = {
     },
 
     startup: {
-      description: "Report all daemons configured to start at login/boot (RunAtLoad or KeepAlive)",
+      description:
+        "Report all daemons configured to start at login/boot (RunAtLoad or KeepAlive)",
       arguments: z.object({
         pattern: z.string().default("").describe("Filter pattern for labels"),
       }),
@@ -1040,8 +1299,12 @@ export const model = {
         const plists = await scanPlistDirectories(args.pattern || undefined);
 
         const items: Array<{
-          label: string; path: string; type: "agent" | "daemon";
-          runAtLoad: boolean; keepAlive: unknown; vendor: string;
+          label: string;
+          path: string;
+          type: "agent" | "daemon";
+          runAtLoad: boolean;
+          keepAlive: unknown;
+          vendor: string;
         }> = [];
 
         for (const plist of plists) {
@@ -1055,16 +1318,22 @@ export const model = {
           if (!info.runAtLoad && info.keepAlive === null) continue;
 
           items.push({
-            label: plist.label, path: plist.path, type: plist.type,
-            runAtLoad: info.runAtLoad, keepAlive: info.keepAlive,
+            label: plist.label,
+            path: plist.path,
+            type: plist.type,
+            runAtLoad: info.runAtLoad,
+            keepAlive: info.keepAlive,
             vendor: extractVendor(plist.label),
           });
         }
 
-        items.sort((a, b) => a.vendor.localeCompare(b.vendor) || a.label.localeCompare(b.label));
+        items.sort((a, b) =>
+          a.vendor.localeCompare(b.vendor) || a.label.localeCompare(b.label)
+        );
 
         const handle = await _context.writeResource("startup", "main", {
-          items, count: items.length,
+          items,
+          count: items.length,
           queriedAt: new Date().toISOString(),
         });
         return { dataHandles: [handle] };

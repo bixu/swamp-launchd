@@ -3,7 +3,11 @@
 const decoder = new TextDecoder();
 
 export async function getUid(): Promise<string> {
-  const cmd = new Deno.Command("id", { args: ["-u"], stdout: "piped", stderr: "piped" });
+  const cmd = new Deno.Command("id", {
+    args: ["-u"],
+    stdout: "piped",
+    stderr: "piped",
+  });
   const output = await cmd.output();
   return decoder.decode(output.stdout).trim();
 }
@@ -43,7 +47,10 @@ export async function launchctl(args: string[]): Promise<CmdResult> {
   };
 }
 
-export async function runCmd(command: string, args: string[]): Promise<CmdResult> {
+export async function runCmd(
+  command: string,
+  args: string[],
+): Promise<CmdResult> {
   const cmd = new Deno.Command(command, {
     args,
     stdout: "piped",
@@ -73,7 +80,10 @@ export function parseServiceStatus(stdout: string): {
       const val = trimmed.split("=")[1]?.trim();
       if (val && val !== "(null)") pid = parseInt(val, 10);
     }
-    if (trimmed.startsWith("last exit code =") || trimmed.startsWith("exit code =")) {
+    if (
+      trimmed.startsWith("last exit code =") ||
+      trimmed.startsWith("exit code =")
+    ) {
       const val = trimmed.split("=")[1]?.trim();
       if (val && val !== "(null)") exitCode = parseInt(val, 10);
     }
@@ -186,7 +196,9 @@ export function parseServiceDetail(stdout: string): DetailedServiceInfo {
     }
 
     // Keep alive
-    if (trimmed.startsWith("keep alive =") || trimmed.startsWith("keepalive =")) {
+    if (
+      trimmed.startsWith("keep alive =") || trimmed.startsWith("keepalive =")
+    ) {
       keepAlive = trimmed.includes("true") || trimmed.includes("1");
     }
 
@@ -217,7 +229,11 @@ export interface ServiceListItem {
   status: string;
 }
 
-export function parseServiceList(stdout: string, pattern?: string, statusFilter?: string): ServiceListItem[] {
+export function parseServiceList(
+  stdout: string,
+  pattern?: string,
+  statusFilter?: string,
+): ServiceListItem[] {
   const items: ServiceListItem[] = [];
   let inServices = false;
 
@@ -247,7 +263,9 @@ export function parseServiceList(stdout: string, pattern?: string, statusFilter?
         const isRunning = pid !== null && !isNaN(pid) && pid > 0;
         const status = isRunning ? "running" : "not running";
 
-        if (statusFilter && statusFilter !== "all" && status !== statusFilter) continue;
+        if (statusFilter && statusFilter !== "all" && status !== statusFilter) {
+          continue;
+        }
 
         items.push({
           label,
@@ -263,17 +281,19 @@ export function parseServiceList(stdout: string, pattern?: string, statusFilter?
   return items;
 }
 
-export const PLIST_SEARCH_DIRS = [
-  `${Deno.env.get("HOME")}/Library/LaunchAgents`,
-  "/Library/LaunchAgents",
-  "/Library/LaunchDaemons",
-  "/System/Library/LaunchAgents",
-  "/System/Library/LaunchDaemons",
-];
+export function getPlistSearchDirs(): string[] {
+  return [
+    `${Deno.env.get("HOME")}/Library/LaunchAgents`,
+    "/Library/LaunchAgents",
+    "/Library/LaunchDaemons",
+    "/System/Library/LaunchAgents",
+    "/System/Library/LaunchDaemons",
+  ];
+}
 
 export function findPlist(label: string): string | null {
   const fileName = `${label}.plist`;
-  for (const dir of PLIST_SEARCH_DIRS) {
+  for (const dir of getPlistSearchDirs()) {
     const path = `${dir}/${fileName}`;
     try {
       Deno.statSync(path);
@@ -319,5 +339,8 @@ export const EXIT_CODE_MAP: Record<number, string> = {
 
 export function explainExitCode(code: number | null): string {
   if (code === null) return "No exit code recorded";
-  return EXIT_CODE_MAP[code] ?? (code > 128 ? `Killed by signal ${code - 128}` : `Unknown exit code ${code}`);
+  return EXIT_CODE_MAP[code] ??
+    (code > 128
+      ? `Killed by signal ${code - 128}`
+      : `Unknown exit code ${code}`);
 }

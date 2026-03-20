@@ -1,6 +1,6 @@
 // Plist parsing and generation helpers
 
-import { runCmd, PLIST_SEARCH_DIRS } from "./launchctl.ts";
+import { getPlistSearchDirs, runCmd } from "./launchctl.ts";
 
 export interface PlistInfo {
   label: string;
@@ -22,7 +22,9 @@ export interface PlistInfo {
   rawKeys: string[];
 }
 
-export async function readPlist(path: string): Promise<Record<string, unknown>> {
+export async function readPlist(
+  path: string,
+): Promise<Record<string, unknown>> {
   // Convert binary plist to JSON using plutil
   const result = await runCmd("plutil", ["-convert", "json", "-o", "-", path]);
   if (!result.success) {
@@ -31,7 +33,9 @@ export async function readPlist(path: string): Promise<Record<string, unknown>> 
   return JSON.parse(result.stdout);
 }
 
-export async function validatePlist(path: string): Promise<{ valid: boolean; errors: string[] }> {
+export async function validatePlist(
+  path: string,
+): Promise<{ valid: boolean; errors: string[] }> {
   const result = await runCmd("plutil", ["-lint", path]);
   if (result.success) {
     return { valid: true, errors: [] };
@@ -42,7 +46,10 @@ export async function validatePlist(path: string): Promise<{ valid: boolean; err
   };
 }
 
-export function parsePlistData(data: Record<string, unknown>, path: string): PlistInfo {
+export function parsePlistData(
+  data: Record<string, unknown>,
+  path: string,
+): PlistInfo {
   const calInterval = data.StartCalendarInterval;
   let startCalendarInterval: Record<string, number>[] | null = null;
   if (Array.isArray(calInterval)) {
@@ -57,11 +64,14 @@ export function parsePlistData(data: Record<string, unknown>, path: string): Pli
     program: (data.Program as string) ?? null,
     programArguments: (data.ProgramArguments as string[]) ?? [],
     runAtLoad: (data.RunAtLoad as boolean) ?? false,
-    keepAlive: data.KeepAlive !== undefined ? (data.KeepAlive as boolean | Record<string, unknown>) : null,
+    keepAlive: data.KeepAlive !== undefined
+      ? (data.KeepAlive as boolean | Record<string, unknown>)
+      : null,
     startInterval: (data.StartInterval as number) ?? null,
     startCalendarInterval,
     watchPaths: (data.WatchPaths as string[]) ?? [],
-    environmentVariables: (data.EnvironmentVariables as Record<string, string>) ?? {},
+    environmentVariables:
+      (data.EnvironmentVariables as Record<string, string>) ?? {},
     workingDirectory: (data.WorkingDirectory as string) ?? null,
     standardOutPath: (data.StandardOutPath as string) ?? null,
     standardErrorPath: (data.StandardErrorPath as string) ?? null,
@@ -97,93 +107,97 @@ export function generatePlistXml(opts: PlistCreateOptions): string {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
     '<plist version="1.0">',
-    '<dict>',
-    '\t<key>Label</key>',
+    "<dict>",
+    "\t<key>Label</key>",
     `\t<string>${escapeXml(opts.label)}</string>`,
   ];
 
   if (opts.program) {
-    lines.push('\t<key>Program</key>');
+    lines.push("\t<key>Program</key>");
     lines.push(`\t<string>${escapeXml(opts.program)}</string>`);
   }
 
   if (opts.programArguments && opts.programArguments.length > 0) {
-    lines.push('\t<key>ProgramArguments</key>');
-    lines.push('\t<array>');
+    lines.push("\t<key>ProgramArguments</key>");
+    lines.push("\t<array>");
     for (const arg of opts.programArguments) {
       lines.push(`\t\t<string>${escapeXml(arg)}</string>`);
     }
-    lines.push('\t</array>');
+    lines.push("\t</array>");
   }
 
   if (opts.runAtLoad !== undefined) {
-    lines.push('\t<key>RunAtLoad</key>');
-    lines.push(`\t<${opts.runAtLoad}/>`)
+    lines.push("\t<key>RunAtLoad</key>");
+    lines.push(`\t<${opts.runAtLoad}/>`);
   }
 
   if (opts.keepAlive !== undefined) {
-    lines.push('\t<key>KeepAlive</key>');
+    lines.push("\t<key>KeepAlive</key>");
     lines.push(`\t<${opts.keepAlive}/>`);
   }
 
   if (opts.startInterval) {
-    lines.push('\t<key>StartInterval</key>');
+    lines.push("\t<key>StartInterval</key>");
     lines.push(`\t<integer>${opts.startInterval}</integer>`);
   }
 
   if (opts.startCalendarInterval) {
-    lines.push('\t<key>StartCalendarInterval</key>');
-    lines.push('\t<dict>');
+    lines.push("\t<key>StartCalendarInterval</key>");
+    lines.push("\t<dict>");
     for (const [key, val] of Object.entries(opts.startCalendarInterval)) {
       lines.push(`\t\t<key>${escapeXml(key)}</key>`);
       lines.push(`\t\t<integer>${val}</integer>`);
     }
-    lines.push('\t</dict>');
+    lines.push("\t</dict>");
   }
 
   if (opts.watchPaths && opts.watchPaths.length > 0) {
-    lines.push('\t<key>WatchPaths</key>');
-    lines.push('\t<array>');
+    lines.push("\t<key>WatchPaths</key>");
+    lines.push("\t<array>");
     for (const p of opts.watchPaths) {
       lines.push(`\t\t<string>${escapeXml(p)}</string>`);
     }
-    lines.push('\t</array>');
+    lines.push("\t</array>");
   }
 
-  if (opts.environmentVariables && Object.keys(opts.environmentVariables).length > 0) {
-    lines.push('\t<key>EnvironmentVariables</key>');
-    lines.push('\t<dict>');
+  if (
+    opts.environmentVariables &&
+    Object.keys(opts.environmentVariables).length > 0
+  ) {
+    lines.push("\t<key>EnvironmentVariables</key>");
+    lines.push("\t<dict>");
     for (const [key, val] of Object.entries(opts.environmentVariables)) {
       lines.push(`\t\t<key>${escapeXml(key)}</key>`);
       lines.push(`\t\t<string>${escapeXml(val)}</string>`);
     }
-    lines.push('\t</dict>');
+    lines.push("\t</dict>");
   }
 
   if (opts.workingDirectory) {
-    lines.push('\t<key>WorkingDirectory</key>');
+    lines.push("\t<key>WorkingDirectory</key>");
     lines.push(`\t<string>${escapeXml(opts.workingDirectory)}</string>`);
   }
 
   if (opts.standardOutPath) {
-    lines.push('\t<key>StandardOutPath</key>');
+    lines.push("\t<key>StandardOutPath</key>");
     lines.push(`\t<string>${escapeXml(opts.standardOutPath)}</string>`);
   }
 
   if (opts.standardErrorPath) {
-    lines.push('\t<key>StandardErrorPath</key>');
+    lines.push("\t<key>StandardErrorPath</key>");
     lines.push(`\t<string>${escapeXml(opts.standardErrorPath)}</string>`);
   }
 
-  lines.push('</dict>');
-  lines.push('</plist>');
-  lines.push('');
+  lines.push("</dict>");
+  lines.push("</plist>");
+  lines.push("");
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export interface DiscoveredPlist {
@@ -193,10 +207,12 @@ export interface DiscoveredPlist {
   type: "agent" | "daemon";
 }
 
-export async function scanPlistDirectories(pattern?: string): Promise<DiscoveredPlist[]> {
+export async function scanPlistDirectories(
+  pattern?: string,
+): Promise<DiscoveredPlist[]> {
   const results: DiscoveredPlist[] = [];
 
-  for (const dir of PLIST_SEARCH_DIRS) {
+  for (const dir of getPlistSearchDirs()) {
     let entries: Deno.DirEntry[];
     try {
       entries = [];
