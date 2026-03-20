@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -22,8 +24,20 @@ jobs:
       - name: Lint
         run: deno lint
 
-      - name: Unit tests
-        run: deno test --allow-env --allow-read --allow-run
+      - name: Unit tests with coverage
+        run: deno test --allow-env --allow-read --allow-run --coverage=coverage/
+
+      - name: Generate coverage report
+        run: deno coverage coverage/ --lcov --output=coverage/lcov.info
+
+      - name: Coverage summary
+        run: deno coverage coverage/
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-report
+          path: coverage/lcov.info
 
   smoke-test:
     runs-on: macos-latest
