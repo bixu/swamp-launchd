@@ -36,18 +36,27 @@ jobs:
       - name: Coverage summary
         run: deno coverage coverage/
 
-      - name: Check coverage threshold (95%)
+      - name: Check coverage thresholds
         run: |
-          LINE_COV=$(deno coverage coverage/ 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep 'All files' | awk -F'|' '{print $5}' | tr -d ' ')
-          echo "Line coverage: ${LINE_COV}%"
-          if [ -z "$LINE_COV" ]; then
-            echo "::error::Could not parse coverage output"
-            exit 1
+          CLEAN=$(deno coverage coverage/ 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep 'All files')
+          BRANCH=$(echo "$CLEAN" | awk -F'|' '{print $3}' | tr -d ' ')
+          FUNC=$(echo "$CLEAN" | awk -F'|' '{print $4}' | tr -d ' ')
+          LINE=$(echo "$CLEAN" | awk -F'|' '{print $5}' | tr -d ' ')
+          echo "Coverage — Branch: ${BRANCH}% | Function: ${FUNC}% | Line: ${LINE}%"
+          FAIL=0
+          if [ "$(echo "$LINE < 100" | bc -l)" -eq 1 ]; then
+            echo "::error::Line coverage ${LINE}% is below 100% threshold"
+            FAIL=1
           fi
-          if [ "$(echo "$LINE_COV < 95" | bc -l)" -eq 1 ]; then
-            echo "::error::Line coverage ${LINE_COV}% is below 95% threshold"
-            exit 1
+          if [ "$(echo "$FUNC < 100" | bc -l)" -eq 1 ]; then
+            echo "::error::Function coverage ${FUNC}% is below 100% threshold"
+            FAIL=1
           fi
+          if [ "$(echo "$BRANCH < 97" | bc -l)" -eq 1 ]; then
+            echo "::error::Branch coverage ${BRANCH}% is below 97% threshold"
+            FAIL=1
+          fi
+          exit $FAIL
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
