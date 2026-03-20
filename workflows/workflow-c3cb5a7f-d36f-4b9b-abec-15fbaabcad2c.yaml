@@ -1,30 +1,63 @@
 id: c3cb5a7f-d36f-4b9b-abec-15fbaabcad2c
 name: smoke-test
 description: >
-  Comprehensive smoke test for @bixu/launchd-daemon extension. Creates a
-  disposable test daemon (club.swamp.bixu.launchd.smoke-test), exercises
-  every method, then tears it down. Also tests read-only methods against
-  the gui domain.
-version: 2
+  Comprehensive smoke test for @bixu/launchd-daemon extension. Job 1 runs
+  the full lifecycle on a disposable test daemon. Job 2 tests all read-only
+  and observability methods. Job 3 tests discovery and reporting methods.
+  Only the disposable test daemon is ever loaded/started/stopped/unloaded.
+version: 3
 jobs:
+  # ── Job 1: Full lifecycle on the disposable test daemon ────────────────
   - name: lifecycle
-    description: Full create → exercise → destroy lifecycle of a test daemon
+    description: Create, exercise, and destroy the smoke-test daemon
     steps:
       - name: load
-        description: Bootstrap the smoke-test daemon into launchd
+        description: Bootstrap the smoke-test daemon
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
           methodName: load
 
       - name: sync-after-load
-        description: Verify daemon state after loading
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
           methodName: sync
         dependsOn:
           - step: load
+            condition:
+              type: succeeded
+
+      - name: detail-after-load
+        description: Get detailed info after loading
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: detail
+        dependsOn:
+          - step: sync-after-load
+            condition:
+              type: succeeded
+
+      - name: plist-info
+        description: Parse and validate the plist file
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: plistInfo
+        dependsOn:
+          - step: load
+            condition:
+              type: succeeded
+
+      - name: enable
+        description: Enable the daemon (persist across reboots)
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: enable
+        dependsOn:
+          - step: detail-after-load
             condition:
               type: succeeded
 
@@ -35,12 +68,11 @@ jobs:
           modelIdOrName: smoke-test-daemon
           methodName: start
         dependsOn:
-          - step: sync-after-load
+          - step: enable
             condition:
               type: succeeded
 
       - name: sync-after-start
-        description: Verify daemon state after starting (should have a PID)
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
@@ -50,30 +82,77 @@ jobs:
             condition:
               type: succeeded
 
-      - name: stop
-        description: Stop the running daemon
+      - name: blame
+        description: Show why the daemon was started
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
-          methodName: stop
+          methodName: blame
         dependsOn:
           - step: sync-after-start
             condition:
               type: succeeded
 
-      - name: sync-after-stop
-        description: Verify daemon state after stopping
+      - name: diff
+        description: Compare plist on disk vs loaded state
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
-          methodName: sync
+          methodName: diff
         dependsOn:
-          - step: stop
+          - step: sync-after-start
+            condition:
+              type: succeeded
+
+      - name: logs
+        description: Fetch logs for the test daemon
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: logs
+          inputs:
+            lines: 10
+            since: 5m
+        dependsOn:
+          - step: sync-after-start
+            condition:
+              type: succeeded
+
+      - name: diagnose
+        description: Run diagnostics on the test daemon
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: diagnose
+        dependsOn:
+          - step: sync-after-start
+            condition:
+              type: succeeded
+
+      - name: restart
+        description: Restart the running daemon
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: restart
+        dependsOn:
+          - step: diagnose
+            condition:
+              type: completed
+
+      - name: stop
+        description: Stop the daemon
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: stop
+        dependsOn:
+          - step: restart
             condition:
               type: succeeded
 
       - name: force-start
-        description: Force-kickstart the daemon (tests the force flag)
+        description: Force-kickstart (tests -k flag)
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
@@ -81,23 +160,34 @@ jobs:
           inputs:
             force: true
         dependsOn:
-          - step: sync-after-stop
+          - step: stop
             condition:
               type: succeeded
 
-      - name: unload
-        description: Bootout the daemon from launchd (cleanup)
+      - name: disable
+        description: Disable the daemon before cleanup
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
-          methodName: unload
+          methodName: disable
         dependsOn:
           - step: force-start
             condition:
               type: completed
 
+      - name: unload
+        description: Bootout the daemon (cleanup)
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: unload
+        dependsOn:
+          - step: disable
+            condition:
+              type: completed
+
       - name: sync-after-unload
-        description: Verify daemon is gone after unloading (should be not_found)
+        description: Verify daemon is gone (should be not_found)
         task:
           type: model_method
           modelIdOrName: smoke-test-daemon
@@ -107,32 +197,29 @@ jobs:
             condition:
               type: succeeded
 
+  # ── Job 2: Read-only methods against the gui domain ────────────────────
   - name: read-only
-    description: Test list and vendors methods against the gui domain
+    description: Test list, vendors, and observability methods (safe, no mutations)
     dependsOn:
       - job: lifecycle
         condition:
           type: completed
     steps:
       - name: list-all
-        description: List all daemons in the gui domain
+        description: List all daemons
         task:
           type: model_method
           modelIdOrName: my-daemons
           methodName: list
 
       - name: list-running
-        description: List only running daemons
+        description: List running daemons only
         task:
           type: model_method
           modelIdOrName: my-daemons
           methodName: list
           inputs:
             status: running
-        dependsOn:
-          - step: list-all
-            condition:
-              type: succeeded
 
       - name: list-filtered
         description: List daemons matching a pattern
@@ -143,33 +230,127 @@ jobs:
           inputs:
             pattern: com.apple
             status: running
-        dependsOn:
-          - step: list-running
-            condition:
-              type: succeeded
 
       - name: vendors-running
-        description: Report vendors for running daemons
+        description: Vendor report for running daemons
         task:
           type: model_method
           modelIdOrName: my-daemons
           methodName: vendors
           inputs:
             status: running
-        dependsOn:
-          - step: list-filtered
-            condition:
-              type: succeeded
 
       - name: vendors-all
-        description: Report vendors for all daemons
+        description: Vendor report for all daemons
         task:
           type: model_method
           modelIdOrName: my-daemons
           methodName: vendors
           inputs:
             status: all
-        dependsOn:
-          - step: vendors-running
-            condition:
-              type: succeeded
+
+      - name: detail-ssh-agent
+        description: Detailed info for a known daemon
+        task:
+          type: model_method
+          modelIdOrName: test-ssh-agent
+          methodName: detail
+
+      - name: logs-ssh-agent
+        description: Fetch logs for ssh-agent
+        task:
+          type: model_method
+          modelIdOrName: test-ssh-agent
+          methodName: logs
+          inputs:
+            lines: 10
+            since: 1h
+
+      - name: plist-info-ssh-agent
+        description: Parse ssh-agent plist
+        task:
+          type: model_method
+          modelIdOrName: test-ssh-agent
+          methodName: plistInfo
+
+      - name: diagnose-ssh-agent
+        description: Diagnose ssh-agent
+        task:
+          type: model_method
+          modelIdOrName: test-ssh-agent
+          methodName: diagnose
+
+      - name: diff-ssh-agent
+        description: Drift detection for ssh-agent
+        task:
+          type: model_method
+          modelIdOrName: test-ssh-agent
+          methodName: diff
+
+      - name: blame-ssh-agent
+        description: Blame for ssh-agent
+        task:
+          type: model_method
+          modelIdOrName: test-ssh-agent
+          methodName: blame
+
+  # ── Job 3: Discovery and reporting (domain-wide, read-only) ────────────
+  - name: discovery
+    description: Test scan, orphans, health, processes, and startup methods
+    dependsOn:
+      - job: lifecycle
+        condition:
+          type: completed
+    steps:
+      - name: scan
+        description: Scan plist directories for all installed daemons
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: scan
+
+      - name: scan-filtered
+        description: Scan with a filter pattern
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: scan
+          inputs:
+            pattern: com.apple
+
+      - name: orphans
+        description: Find orphaned daemons and plist files
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: orphans
+
+      - name: health
+        description: Health check daemons expected to be running
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: health
+
+      - name: processes
+        description: CPU and memory usage of running daemons
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: processes
+
+      - name: processes-filtered
+        description: Resource usage filtered by pattern
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: processes
+          inputs:
+            pattern: com.apple
+
+      - name: startup
+        description: Report daemons configured to start at login/boot
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: startup

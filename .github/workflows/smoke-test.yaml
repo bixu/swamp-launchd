@@ -28,6 +28,9 @@ jobs:
           swamp model create @bixu/launchd-daemon my-daemons \
             --global-arg label=all \
             --json
+          swamp model create @bixu/launchd-daemon test-ssh-agent \
+            --global-arg label=com.openssh.ssh-agent \
+            --json
 
       - name: Validate workflow
         run: swamp workflow validate smoke-test --json
