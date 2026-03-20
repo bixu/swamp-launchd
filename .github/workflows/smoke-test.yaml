@@ -14,18 +14,13 @@ jobs:
       - name: Install swamp
         run: |
           curl -fsSL swamp.club/install.sh | sh
-          # Find the swamp binary and add its directory to PATH for subsequent steps
           SWAMP_BIN="$(find "$HOME" /usr/local -name swamp -type f 2>/dev/null | head -1)"
           if [ -z "$SWAMP_BIN" ]; then
             echo "swamp binary not found after install" >&2
             exit 1
           fi
           echo "$(dirname "$SWAMP_BIN")" >> "$GITHUB_PATH"
-          echo "Found swamp at: $SWAMP_BIN"
           "$SWAMP_BIN" --version
-
-      - name: Initialize swamp repo
-        run: swamp init --tool claude --json
 
       - name: Register model instances
         run: |
