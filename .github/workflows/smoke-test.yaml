@@ -28,7 +28,7 @@ jobs:
         run: deno lint
 
       - name: Unit tests with coverage
-        run: deno test --allow-env --allow-read --allow-run --coverage=coverage/
+        run: deno test --allow-env --allow-read --allow-run --allow-write --coverage=coverage/
 
       - name: Generate coverage report
         run: deno coverage coverage/ --lcov --output=coverage/lcov.info
