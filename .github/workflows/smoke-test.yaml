@@ -45,14 +45,14 @@ jobs:
 
       - name: Register model instances
         run: |
-          swamp model create @bixu/launchd-daemon smoke-test-daemon \
+          swamp model create @bixu/launchd smoke-test-daemon \
             --global-arg label=club.swamp.bixu.launchd.smoke-test \
             --global-arg plistPath=fixtures/club.swamp.bixu.launchd.smoke-test.plist \
             --json
-          swamp model create @bixu/launchd-daemon my-daemons \
+          swamp model create @bixu/launchd my-daemons \
             --global-arg label=all \
             --json
-          swamp model create @bixu/launchd-daemon test-ssh-agent \
+          swamp model create @bixu/launchd test-ssh-agent \
             --global-arg label=com.openssh.ssh-agent \
             --json
 

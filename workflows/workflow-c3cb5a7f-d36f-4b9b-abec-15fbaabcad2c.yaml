@@ -1,7 +1,7 @@
 id: c3cb5a7f-d36f-4b9b-abec-15fbaabcad2c
 name: smoke-test
 description: >
-  Comprehensive smoke test for @bixu/launchd-daemon extension. Job 1 runs
+  Comprehensive smoke test for @bixu/launchd extension. Job 1 runs
   the full lifecycle on a disposable test daemon. Job 2 tests all read-only
   and observability methods. Job 3 tests discovery and reporting methods.
   Only the disposable test daemon is ever loaded/started/stopped/unloaded.

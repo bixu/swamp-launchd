@@ -1,0 +1,14 @@
+manifestVersion: 1
+name: "@bixu/launchd"
+version: "2026.03.21.1"
+description: "Manage macOS launchd daemons: lifecycle, observability, plist management, discovery, and reporting"
+models:
+  - launchd_daemon.ts
+platforms:
+  - darwin-aarch64
+  - darwin-x86_64
+labels:
+  - macos
+  - launchd
+  - daemon
+  - plist

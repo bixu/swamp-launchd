@@ -172,7 +172,7 @@ function resolvePath(
 // ── Model ───────────────────────────────────────────────────────────────────
 
 export const model = {
-  type: "@bixu/launchd-daemon",
+  type: "@bixu/launchd",
   version: "2026.03.20.2",
   globalArguments: GlobalArgsSchema,
   resources: {
