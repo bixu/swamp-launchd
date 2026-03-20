@@ -6,16 +6,7 @@ on:
 
 jobs:
   lint-and-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            arch: x86_64
-          - runner: macos-latest
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
-    name: lint-and-test (${{ matrix.arch }})
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -35,16 +26,7 @@ jobs:
         run: deno test --allow-env --allow-read --allow-run
 
   smoke-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            arch: x86_64
-          - runner: macos-latest
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
-    name: smoke-test (${{ matrix.arch }})
+    runs-on: macos-latest
     needs: lint-and-test
     steps:
       - name: Checkout
