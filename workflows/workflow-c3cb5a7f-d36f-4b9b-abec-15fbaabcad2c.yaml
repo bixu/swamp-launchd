@@ -1,0 +1,175 @@
+id: c3cb5a7f-d36f-4b9b-abec-15fbaabcad2c
+name: smoke-test
+description: >
+  Comprehensive smoke test for @bixu/launchd-daemon extension. Creates a
+  disposable test daemon (club.swamp.bixu.launchd.smoke-test), exercises
+  every method, then tears it down. Also tests read-only methods against
+  the gui domain.
+version: 2
+jobs:
+  - name: lifecycle
+    description: Full create → exercise → destroy lifecycle of a test daemon
+    steps:
+      - name: load
+        description: Bootstrap the smoke-test daemon into launchd
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: load
+
+      - name: sync-after-load
+        description: Verify daemon state after loading
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: sync
+        dependsOn:
+          - step: load
+            condition:
+              type: succeeded
+
+      - name: start
+        description: Kickstart the daemon
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: start
+        dependsOn:
+          - step: sync-after-load
+            condition:
+              type: succeeded
+
+      - name: sync-after-start
+        description: Verify daemon state after starting (should have a PID)
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: sync
+        dependsOn:
+          - step: start
+            condition:
+              type: succeeded
+
+      - name: stop
+        description: Stop the running daemon
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: stop
+        dependsOn:
+          - step: sync-after-start
+            condition:
+              type: succeeded
+
+      - name: sync-after-stop
+        description: Verify daemon state after stopping
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: sync
+        dependsOn:
+          - step: stop
+            condition:
+              type: succeeded
+
+      - name: force-start
+        description: Force-kickstart the daemon (tests the force flag)
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: start
+          inputs:
+            force: true
+        dependsOn:
+          - step: sync-after-stop
+            condition:
+              type: succeeded
+
+      - name: unload
+        description: Bootout the daemon from launchd (cleanup)
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: unload
+        dependsOn:
+          - step: force-start
+            condition:
+              type: completed
+
+      - name: sync-after-unload
+        description: Verify daemon is gone after unloading (should be not_found)
+        task:
+          type: model_method
+          modelIdOrName: smoke-test-daemon
+          methodName: sync
+        dependsOn:
+          - step: unload
+            condition:
+              type: succeeded
+
+  - name: read-only
+    description: Test list and vendors methods against the gui domain
+    dependsOn:
+      - job: lifecycle
+        condition:
+          type: completed
+    steps:
+      - name: list-all
+        description: List all daemons in the gui domain
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: list
+
+      - name: list-running
+        description: List only running daemons
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: list
+          inputs:
+            status: running
+        dependsOn:
+          - step: list-all
+            condition:
+              type: succeeded
+
+      - name: list-filtered
+        description: List daemons matching a pattern
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: list
+          inputs:
+            pattern: com.apple
+            status: running
+        dependsOn:
+          - step: list-running
+            condition:
+              type: succeeded
+
+      - name: vendors-running
+        description: Report vendors for running daemons
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: vendors
+          inputs:
+            status: running
+        dependsOn:
+          - step: list-filtered
+            condition:
+              type: succeeded
+
+      - name: vendors-all
+        description: Report vendors for all daemons
+        task:
+          type: model_method
+          modelIdOrName: my-daemons
+          methodName: vendors
+          inputs:
+            status: all
+        dependsOn:
+          - step: vendors-running
+            condition:
+              type: succeeded

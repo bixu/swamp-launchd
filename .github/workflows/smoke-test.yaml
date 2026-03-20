@@ -1,0 +1,36 @@
+name: Smoke Test
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install swamp
+        run: |
+          curl -fsSL https://get.swamp.club | bash
+          echo "$HOME/.swamp/bin" >> "$GITHUB_PATH"
+
+      - name: Initialize swamp repo
+        run: swamp init --tool ci --json
+
+      - name: Register model instances
+        run: |
+          swamp model create @bixu/launchd-daemon smoke-test-daemon \
+            --global-arg label=club.swamp.bixu.launchd.smoke-test \
+            --global-arg plistPath=fixtures/club.swamp.bixu.launchd.smoke-test.plist \
+            --json
+          swamp model create @bixu/launchd-daemon my-daemons \
+            --global-arg label=all \
+            --json
+
+      - name: Validate workflow
+        run: swamp workflow validate smoke-test --json
+
+      - name: Run smoke test
+        run: swamp workflow run smoke-test --json
