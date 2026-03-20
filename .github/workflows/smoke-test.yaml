@@ -25,7 +25,7 @@ jobs:
           "$SWAMP_BIN" --version
 
       - name: Initialize swamp repo
-        run: swamp init --tool ci --json
+        run: swamp init --tool claude --json
 
       - name: Register model instances
         run: |
