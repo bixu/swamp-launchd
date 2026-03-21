@@ -31,10 +31,15 @@ jobs:
       - name: Show test logs on failure
         if: failure()
         run: |
-          for log in .swamp/outputs/command/shell/*/; do
-            echo "=== $(basename $log) ==="
-            cat "${log}"*.log 2>/dev/null || true
+          find .swamp/outputs -name "*.log" -type f | sort | while read f; do
+            echo "=== $f ==="
+            cat "$f"
+            echo
           done
+
+      - name: Direct test run on failure (debug)
+        if: failure()
+        run: deno test --allow-env --allow-read --allow-run --allow-write 2>&1 || true
 
       - name: Generate lcov report
         if: always()
