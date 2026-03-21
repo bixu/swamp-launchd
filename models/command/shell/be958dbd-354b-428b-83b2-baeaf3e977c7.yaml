@@ -1,0 +1,8 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: be958dbd-354b-428b-83b2-baeaf3e977c7
+name: deno-test
+version: 1
+tags: {}
+globalArguments: {}
+methods: {}

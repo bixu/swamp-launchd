@@ -1,0 +1,8 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: 25fd6c2a-ad32-453e-bf87-ed66a54c4dd9
+name: deno-fmt
+version: 1
+tags: {}
+globalArguments: {}
+methods: {}

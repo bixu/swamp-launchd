@@ -1,0 +1,11 @@
+type: '@bixu/launchd-daemon'
+typeVersion: 2026.03.20.1
+id: 16fa46e2-69bd-4bd9-bc79-a54df291a26e
+name: smoke-test-daemon
+version: 1
+tags: {}
+globalArguments:
+  label: club.swamp.bixu.launchd.smoke-test
+  plistPath: fixtures/club.swamp.bixu.launchd.smoke-test.plist
+  domain: gui
+methods: {}

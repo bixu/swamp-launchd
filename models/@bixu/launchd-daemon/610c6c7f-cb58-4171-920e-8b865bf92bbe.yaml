@@ -1,0 +1,10 @@
+type: '@bixu/launchd-daemon'
+typeVersion: 2026.03.20.1
+id: 610c6c7f-cb58-4171-920e-8b865bf92bbe
+name: test-ssh-agent
+version: 1
+tags: {}
+globalArguments:
+  label: com.openssh.ssh-agent
+  domain: gui
+methods: {}

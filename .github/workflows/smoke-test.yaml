@@ -32,14 +32,6 @@ jobs:
           echo "$(dirname "$SWAMP_BIN")" >> "$GITHUB_PATH"
           "$SWAMP_BIN" --version
 
-      - name: Register CI model instances
-        run: |
-          swamp model create command/shell deno-fmt --json
-          swamp model create command/shell deno-lint --json
-          swamp model create command/shell deno-test --json
-          swamp model create command/shell coverage-report --json
-          swamp model create command/shell coverage-check --json
-
       - name: Run ci workflow
         run: swamp workflow run ci --json
 
@@ -75,19 +67,6 @@ jobs:
           fi
           echo "$(dirname "$SWAMP_BIN")" >> "$GITHUB_PATH"
           "$SWAMP_BIN" --version
-
-      - name: Register model instances
-        run: |
-          swamp model create @bixu/launchd smoke-test-daemon \
-            --global-arg label=club.swamp.bixu.launchd.smoke-test \
-            --global-arg plistPath=fixtures/club.swamp.bixu.launchd.smoke-test.plist \
-            --json
-          swamp model create @bixu/launchd my-daemons \
-            --global-arg label=all \
-            --json
-          swamp model create @bixu/launchd test-ssh-agent \
-            --global-arg label=com.openssh.ssh-agent \
-            --json
 
       - name: Run smoke-test workflow
         run: swamp workflow run smoke-test --json

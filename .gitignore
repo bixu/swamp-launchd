@@ -7,8 +7,6 @@
 .claude/
 # END swamp managed section
 
-# Model instances are local state (UUIDs, machine-specific)
-/models/
 
 # Test coverage output
 coverage/
