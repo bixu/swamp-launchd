@@ -40,9 +40,10 @@ export async function validatePlist(
   if (result.success) {
     return { valid: true, errors: [] };
   }
+  const output = result.stderr || result.stdout;
   return {
     valid: false,
-    errors: result.stderr.split("\n").filter((l) => l.trim().length > 0),
+    errors: output.split("\n").filter((l) => l.trim().length > 0),
   };
 }
 
