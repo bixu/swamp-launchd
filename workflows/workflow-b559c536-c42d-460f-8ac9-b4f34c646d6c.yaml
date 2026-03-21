@@ -69,9 +69,9 @@ jobs:
               LINE=$(echo "$CLEAN" | awk -F'|' '{print $5}' | tr -d ' ')
               echo "Coverage — Branch: ${BRANCH}% | Function: ${FUNC}% | Line: ${LINE}%"
               FAIL=0
-              if [ "$(echo "$LINE < 100" | bc -l)" -eq 1 ]; then echo "FAIL: Line coverage ${LINE}% < 100%"; FAIL=1; fi
-              if [ "$(echo "$FUNC < 100" | bc -l)" -eq 1 ]; then echo "FAIL: Function coverage ${FUNC}% < 100%"; FAIL=1; fi
-              if [ "$(echo "$BRANCH < 97" | bc -l)" -eq 1 ]; then echo "FAIL: Branch coverage ${BRANCH}% < 97%"; FAIL=1; fi
+              if awk "BEGIN{exit(!(${LINE:-0} < 100))}"; then echo "FAIL: Line coverage ${LINE}% < 100%"; FAIL=1; fi
+              if awk "BEGIN{exit(!(${FUNC:-0} < 100))}"; then echo "FAIL: Function coverage ${FUNC}% < 100%"; FAIL=1; fi
+              if awk "BEGIN{exit(!(${BRANCH:-0} < 97))}"; then echo "FAIL: Branch coverage ${BRANCH}% < 97%"; FAIL=1; fi
               exit $FAIL
         dependsOn:
           - step: coverage-report
