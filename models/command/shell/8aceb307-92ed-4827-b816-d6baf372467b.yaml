@@ -1,0 +1,8 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: 8aceb307-92ed-4827-b816-d6baf372467b
+name: publish-push
+version: 1
+tags: {}
+globalArguments: {}
+methods: {}

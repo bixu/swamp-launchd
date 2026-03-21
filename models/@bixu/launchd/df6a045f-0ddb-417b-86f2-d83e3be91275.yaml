@@ -1,6 +1,6 @@
-type: '@bixu/launchd-daemon'
-typeVersion: 2026.03.20.1
-id: 610c6c7f-cb58-4171-920e-8b865bf92bbe
+type: '@bixu/launchd'
+typeVersion: 2026.03.20.2
+id: df6a045f-0ddb-417b-86f2-d83e3be91275
 name: test-ssh-agent
 version: 1
 tags: {}

@@ -1,6 +1,6 @@
-type: '@bixu/launchd-daemon'
-typeVersion: 2026.03.20.1
-id: 16fa46e2-69bd-4bd9-bc79-a54df291a26e
+type: '@bixu/launchd'
+typeVersion: 2026.03.20.2
+id: 3f90c044-282b-4e8e-acd9-a14e36169994
 name: smoke-test-daemon
 version: 1
 tags: {}

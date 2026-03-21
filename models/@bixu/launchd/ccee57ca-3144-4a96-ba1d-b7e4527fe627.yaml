@@ -1,0 +1,10 @@
+type: '@bixu/launchd'
+typeVersion: 2026.03.20.2
+id: ccee57ca-3144-4a96-ba1d-b7e4527fe627
+name: my-daemons
+version: 1
+tags: {}
+globalArguments:
+  label: all
+  domain: gui
+methods: {}

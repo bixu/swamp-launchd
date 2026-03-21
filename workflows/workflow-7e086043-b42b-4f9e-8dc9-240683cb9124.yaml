@@ -1,0 +1,59 @@
+id: 7e086043-b42b-4f9e-8dc9-240683cb9124
+name: publish
+description: >
+  Authenticate with swamp registry, set CalVer version, and publish the
+  extension. Requires SWAMP_ACCESS_TOKEN env var and PUBLISH_VERSION env
+  var (or defaults to today's date + micro 1).
+version: 1
+jobs:
+  - name: publish
+    description: Authenticate and publish extension
+    steps:
+      - name: auth
+        description: Write swamp registry credentials
+        task:
+          type: model_method
+          modelIdOrName: publish-auth
+          methodName: execute
+          inputs:
+            run: |
+              mkdir -p ~/.config/swamp
+              cat > ~/.config/swamp/auth.json <<EOF
+              {
+                "serverUrl": "https://swamp.club",
+                "apiKey": "${SWAMP_ACCESS_TOKEN}",
+                "apiKeyId": "ci",
+                "username": "bixu"
+              }
+              EOF
+              echo "Auth configured"
+
+      - name: version
+        description: Set CalVer version in manifest
+        task:
+          type: model_method
+          modelIdOrName: publish-version
+          methodName: execute
+          inputs:
+            run: |
+              VERSION="${PUBLISH_VERSION:-$(date -u +%Y.%m.%d).1}"
+              echo "Publishing version: ${VERSION}"
+              sed -i '' "s/^version: .*/version: \"${VERSION}\"/" manifest.yaml
+              cat manifest.yaml
+        dependsOn:
+          - step: auth
+            condition:
+              type: succeeded
+
+      - name: push
+        description: Push extension to registry
+        task:
+          type: model_method
+          modelIdOrName: publish-push
+          methodName: execute
+          inputs:
+            run: swamp extension push manifest.yaml -y --json
+        dependsOn:
+          - step: version
+            condition:
+              type: succeeded
