@@ -28,6 +28,14 @@ jobs:
       - name: Run ci workflow
         run: swamp workflow run ci --json
 
+      - name: Show test logs on failure
+        if: failure()
+        run: |
+          for log in .swamp/outputs/command/shell/*/; do
+            echo "=== $(basename $log) ==="
+            cat "${log}"*.log 2>/dev/null || true
+          done
+
       - name: Generate lcov report
         if: always()
         run: |
