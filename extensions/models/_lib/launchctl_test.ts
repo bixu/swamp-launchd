@@ -373,9 +373,9 @@ Deno.test("getPlistSearchDirs returns standard macOS directories", () => {
 // ── findPlist ───────────────────────────────────────────────────────────────
 
 Deno.test("findPlist finds a known system plist", () => {
-  const path = findPlist("com.openssh.ssh-agent");
+  const path = findPlist("com.apple.Dock");
   assertNotEquals(path, null);
-  assertEquals(path!.endsWith("com.openssh.ssh-agent.plist"), true);
+  assertEquals(path!.endsWith("com.apple.Dock.plist"), true);
 });
 
 Deno.test("findPlist returns null for nonexistent label", () => {

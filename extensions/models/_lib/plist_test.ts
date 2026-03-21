@@ -255,7 +255,7 @@ Deno.test("generatePlistXml omits empty optional sections", () => {
 
 Deno.test("readPlist reads a known system plist", async () => {
   const data = await readPlist(
-    "/System/Library/LaunchAgents/com.apple.AirPortBaseStationAgent.plist",
+    "fixtures/club.swamp.bixu.launchd.smoke-test.plist",
   );
   assertEquals(typeof data.Label, "string");
   assertEquals((data.Label as string).length > 0, true);
@@ -272,7 +272,7 @@ Deno.test("readPlist throws for nonexistent file", async () => {
 
 Deno.test("validatePlist validates a known good plist", async () => {
   const result = await validatePlist(
-    "/System/Library/LaunchAgents/com.apple.AirPortBaseStationAgent.plist",
+    "fixtures/club.swamp.bixu.launchd.smoke-test.plist",
   );
   assertEquals(result.valid, true);
   assertEquals(result.errors.length, 0);
@@ -294,13 +294,13 @@ Deno.test("validatePlist reports errors for invalid file", async () => {
 
 Deno.test("getPlistInfo parses a known system plist", async () => {
   const info = await getPlistInfo(
-    "/System/Library/LaunchAgents/com.apple.AirPortBaseStationAgent.plist",
+    "fixtures/club.swamp.bixu.launchd.smoke-test.plist",
   );
   assertEquals(typeof info.label, "string");
   assertEquals(info.label.length > 0, true);
   assertEquals(
     info.path,
-    "/System/Library/LaunchAgents/com.apple.AirPortBaseStationAgent.plist",
+    "fixtures/club.swamp.bixu.launchd.smoke-test.plist",
   );
   assertEquals(Array.isArray(info.rawKeys), true);
   assertEquals(info.rawKeys.includes("Label"), true);

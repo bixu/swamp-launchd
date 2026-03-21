@@ -209,10 +209,11 @@ export interface DiscoveredPlist {
 
 export async function scanPlistDirectories(
   pattern?: string,
+  dirs?: string[],
 ): Promise<DiscoveredPlist[]> {
   const results: DiscoveredPlist[] = [];
 
-  for (const dir of getPlistSearchDirs()) {
+  for (const dir of (dirs ?? getPlistSearchDirs())) {
     let entries: Deno.DirEntry[];
     try {
       entries = [];
