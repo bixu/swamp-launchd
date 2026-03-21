@@ -21,48 +21,42 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Format check
-        run: deno fmt --check
-
-      - name: Lint
-        run: deno lint
-
-      - name: Unit tests with coverage
-        run: deno test --allow-env --allow-read --allow-run --allow-write --coverage=coverage/
-
-      - name: Generate coverage report
-        run: deno coverage coverage/ --lcov --output=coverage/lcov.info
-
-      - name: Coverage summary
-        run: deno coverage coverage/
-
-      - name: Check coverage thresholds
+      - name: Install swamp
         run: |
-          CLEAN=$(deno coverage coverage/ 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep 'All files')
-          BRANCH=$(echo "$CLEAN" | awk -F'|' '{print $3}' | tr -d ' ')
-          FUNC=$(echo "$CLEAN" | awk -F'|' '{print $4}' | tr -d ' ')
-          LINE=$(echo "$CLEAN" | awk -F'|' '{print $5}' | tr -d ' ')
-          echo "Coverage — Branch: ${BRANCH}% | Function: ${FUNC}% | Line: ${LINE}%"
-          FAIL=0
-          if [ "$(echo "$LINE < 100" | bc -l)" -eq 1 ]; then
-            echo "::error::Line coverage ${LINE}% is below 100% threshold"
-            FAIL=1
+          curl -fsSL swamp.club/install.sh | sh
+          SWAMP_BIN="$(find "$HOME" /usr/local -name swamp -type f 2>/dev/null | head -1)"
+          if [ -z "$SWAMP_BIN" ]; then
+            echo "swamp binary not found after install" >&2
+            exit 1
           fi
-          if [ "$(echo "$FUNC < 100" | bc -l)" -eq 1 ]; then
-            echo "::error::Function coverage ${FUNC}% is below 100% threshold"
-            FAIL=1
+          echo "$(dirname "$SWAMP_BIN")" >> "$GITHUB_PATH"
+          "$SWAMP_BIN" --version
+
+      - name: Register CI model instances
+        run: |
+          swamp model create command/shell deno-fmt --json
+          swamp model create command/shell deno-lint --json
+          swamp model create command/shell deno-test --json
+          swamp model create command/shell coverage-report --json
+          swamp model create command/shell coverage-check --json
+
+      - name: Run ci workflow
+        run: swamp workflow run ci --json
+
+      - name: Generate lcov report
+        if: always()
+        run: |
+          if [ -d coverage ]; then
+            deno coverage coverage/ --lcov --output=coverage/lcov.info
           fi
-          if [ "$(echo "$BRANCH < 97" | bc -l)" -eq 1 ]; then
-            echo "::error::Branch coverage ${BRANCH}% is below 97% threshold"
-            FAIL=1
-          fi
-          exit $FAIL
 
       - name: Upload coverage artifact
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-report
           path: coverage/lcov.info
+          if-no-files-found: ignore
 
   smoke-test:
     runs-on: macos-latest
@@ -95,10 +89,7 @@ jobs:
             --global-arg label=com.openssh.ssh-agent \
             --json
 
-      - name: Validate workflow
-        run: swamp workflow validate smoke-test --json
-
-      - name: Run smoke test
+      - name: Run smoke-test workflow
         run: swamp workflow run smoke-test --json
 
   publish:
