@@ -40,7 +40,6 @@ export async function validatePlist(
   if (result.success) {
     return { valid: true, errors: [] };
   }
-  // plutil outputs errors on stdout, not stderr
   const output = result.stderr || result.stdout;
   return {
     valid: false,
@@ -242,8 +241,6 @@ export async function scanPlistDirectories(
     }
   }
 
-  results.sort((a, b) =>
-    a.label.localeCompare(b.label, "en", { sensitivity: "base" })
-  );
+  results.sort((a, b) => a.label.localeCompare(b.label));
   return results;
 }

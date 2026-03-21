@@ -1,0 +1,8 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: e3f9e1bc-c9f7-4202-acd7-d51d1bbf0eec
+name: coverage-report
+version: 1
+tags: {}
+globalArguments: {}
+methods: {}
