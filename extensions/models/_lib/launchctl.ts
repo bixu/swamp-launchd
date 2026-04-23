@@ -2,6 +2,7 @@
 
 const decoder = new TextDecoder();
 
+/** Returns the current user's numeric UID as a string. */
 export async function getUid(): Promise<string> {
   const cmd = new Deno.Command("id", {
     args: ["-u"],
@@ -12,6 +13,7 @@ export async function getUid(): Promise<string> {
   return decoder.decode(output.stdout).trim();
 }
 
+/** Converts a domain name and UID into a launchd domain target string. */
 export function domainTarget(domain: string, uid: string): string {
   switch (domain) {
     case "system":
@@ -25,6 +27,7 @@ export function domainTarget(domain: string, uid: string): string {
   }
 }
 
+/** Result of running a shell command. */
 export interface CmdResult {
   stdout: string;
   stderr: string;
@@ -32,6 +35,7 @@ export interface CmdResult {
   code: number;
 }
 
+/** Runs a launchctl subcommand and returns the result. */
 export async function launchctl(args: string[]): Promise<CmdResult> {
   const cmd = new Deno.Command("launchctl", {
     args,
@@ -47,6 +51,7 @@ export async function launchctl(args: string[]): Promise<CmdResult> {
   };
 }
 
+/** Runs an arbitrary shell command and returns the result. */
 export async function runCmd(
   command: string,
   args: string[],
@@ -65,6 +70,7 @@ export async function runCmd(
   };
 }
 
+/** Parses PID, exit code, and state from `launchctl print` output. */
 export function parseServiceStatus(stdout: string): {
   pid: number | null;
   exitCode: number | null;
@@ -95,6 +101,7 @@ export function parseServiceStatus(stdout: string): {
   return { pid, exitCode, status };
 }
 
+/** Detailed information about a launchd service parsed from `launchctl print`. */
 export interface DetailedServiceInfo {
   pid: number | null;
   exitCode: number | null;
@@ -110,6 +117,7 @@ export interface DetailedServiceInfo {
   runsInBackground: boolean | null;
 }
 
+/** Parses detailed service info (program, env, mach services, etc.) from `launchctl print` output. */
 export function parseServiceDetail(stdout: string): DetailedServiceInfo {
   const basic = parseServiceStatus(stdout);
   let program: string | null = null;
@@ -222,6 +230,7 @@ export function parseServiceDetail(stdout: string): DetailedServiceInfo {
   };
 }
 
+/** A single service entry from the launchd domain service list. */
 export interface ServiceListItem {
   label: string;
   pid: number | null;
@@ -229,6 +238,7 @@ export interface ServiceListItem {
   status: string;
 }
 
+/** Parses the services block from `launchctl print` output, with optional pattern and status filtering. */
 export function parseServiceList(
   stdout: string,
   pattern?: string,
@@ -281,6 +291,7 @@ export function parseServiceList(
   return items;
 }
 
+/** Returns the standard macOS directories where plist files are located. */
 export function getPlistSearchDirs(): string[] {
   return [
     `${Deno.env.get("HOME")}/Library/LaunchAgents`,
@@ -291,6 +302,7 @@ export function getPlistSearchDirs(): string[] {
   ];
 }
 
+/** Searches standard launchd directories for a plist file matching the given label. */
 export function findPlist(label: string): string | null {
   const fileName = `${label}.plist`;
   for (const dir of getPlistSearchDirs()) {
@@ -305,12 +317,13 @@ export function findPlist(label: string): string | null {
   return null;
 }
 
+/** Resolves a plist path, making relative paths absolute using the repo directory. */
 export function resolvePlistPath(plistPath: string, repoDir: string): string {
   if (plistPath.startsWith("/")) return plistPath;
   return `${repoDir}/${plistPath}`;
 }
 
-// Map well-known exit codes to explanations
+/** Map of well-known exit codes to human-readable explanations. */
 export const EXIT_CODE_MAP: Record<number, string> = {
   0: "Success",
   1: "General error",
@@ -337,6 +350,7 @@ export const EXIT_CODE_MAP: Record<number, string> = {
   255: "Exit status out of range",
 };
 
+/** Returns a human-readable explanation for a process exit code. */
 export function explainExitCode(code: number | null): string {
   if (code === null) return "No exit code recorded";
   return EXIT_CODE_MAP[code] ??

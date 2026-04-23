@@ -171,6 +171,7 @@ function resolvePath(
 
 // ── Model ───────────────────────────────────────────────────────────────────
 
+/** The @bixu/launchd extension model for managing macOS launchd daemons. */
 export const model = {
   type: "@bixu/launchd",
   version: "2026.03.20.2",

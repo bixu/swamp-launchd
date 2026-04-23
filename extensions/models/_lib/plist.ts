@@ -2,6 +2,7 @@
 
 import { getPlistSearchDirs, runCmd } from "./launchctl.ts";
 
+/** Parsed information from a launchd plist file. */
 export interface PlistInfo {
   label: string;
   path: string;
@@ -22,6 +23,7 @@ export interface PlistInfo {
   rawKeys: string[];
 }
 
+/** Reads and parses a plist file to a JSON object using plutil. */
 export async function readPlist(
   path: string,
 ): Promise<Record<string, unknown>> {
@@ -33,6 +35,7 @@ export async function readPlist(
   return JSON.parse(result.stdout);
 }
 
+/** Validates a plist file using plutil lint and returns any errors. */
 export async function validatePlist(
   path: string,
 ): Promise<{ valid: boolean; errors: string[] }> {
@@ -47,6 +50,7 @@ export async function validatePlist(
   };
 }
 
+/** Converts raw plist key-value data into a structured PlistInfo object. */
 export function parsePlistData(
   data: Record<string, unknown>,
   path: string,
@@ -83,11 +87,13 @@ export function parsePlistData(
   };
 }
 
+/** Reads a plist file and returns parsed info. */
 export async function getPlistInfo(path: string): Promise<PlistInfo> {
   const data = await readPlist(path);
   return parsePlistData(data, path);
 }
 
+/** Options for generating a new launchd plist XML file. */
 export interface PlistCreateOptions {
   label: string;
   program?: string;
@@ -103,6 +109,7 @@ export interface PlistCreateOptions {
   standardErrorPath?: string;
 }
 
+/** Generates a launchd plist XML string from the given options. */
 export function generatePlistXml(opts: PlistCreateOptions): string {
   const lines: string[] = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -201,6 +208,7 @@ function escapeXml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** A plist file discovered on disk during directory scanning. */
 export interface DiscoveredPlist {
   label: string;
   path: string;
@@ -208,6 +216,7 @@ export interface DiscoveredPlist {
   type: "agent" | "daemon";
 }
 
+/** Scans standard launchd directories for plist files, with optional label pattern filtering. */
 export async function scanPlistDirectories(
   pattern?: string,
   dirs?: string[],

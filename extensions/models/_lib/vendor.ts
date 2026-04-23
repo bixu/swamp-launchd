@@ -46,6 +46,7 @@ const SORTED_PREFIXES = Object.keys(VENDOR_MAP).sort((a, b) =>
   b.length - a.length
 );
 
+/** Extracts a human-readable vendor name from a reverse-DNS launchd label. */
 export function extractVendor(label: string): string {
   let cleaned = label;
   if (cleaned.startsWith("application.")) {
