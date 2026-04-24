@@ -3,10 +3,10 @@
     "version": "2026.03.21.1",
     "pulledAt": "2026-03-21T00:15:46.913Z",
     "files": [
-      "extensions/models/_lib/launchctl.ts",
-      "extensions/models/_lib/vendor.ts",
-      "extensions/models/_lib/plist.ts",
-      "extensions/models/launchd_daemon.ts",
+      ".swamp/pulled-extensions/models/_lib/launchctl.ts",
+      ".swamp/pulled-extensions/models/_lib/vendor.ts",
+      ".swamp/pulled-extensions/models/_lib/plist.ts",
+      ".swamp/pulled-extensions/models/launchd_daemon.ts",
       ".swamp/bundles/launchd_daemon.js"
     ]
   }
