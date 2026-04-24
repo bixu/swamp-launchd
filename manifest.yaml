@@ -1,6 +1,6 @@
 manifestVersion: 1
 name: "@bixu/launchd"
-version: "2026.04.23.1"
+version: "2026.04.24.1"
 description: "Manage macOS launchd daemons: lifecycle, observability, plist management, discovery, and reporting"
 repository: https://github.com/bixu/swamp-launchd
 models:
